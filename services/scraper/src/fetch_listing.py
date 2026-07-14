@@ -107,9 +107,18 @@ def extract_offer_urls(data: dict) -> list[str]:
     ]
 
 
+def count_total_pages(data: dict) -> int:
+    search_output = find_advert_search_output(data)
+    total_count = search_output["totalCount"]
+    page_size = search_output["pageInfo"]["pageSize"]
+    total_pages = (total_count + page_size - 1) // page_size
+    return total_pages
+
+
 def scrape_listing_urls() -> list[str]:
     all_urls = []
-    for page in range(1, 5):
+    data = fetch_listing_page(page=1)
+    for page in range(1, count_total_pages(data)):
         data = fetch_listing_page(page)
         curr_page_urls = extract_offer_urls(data)
         all_urls.append(curr_page_urls)
