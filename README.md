@@ -1,1 +1,1 @@
-# beamer-data-platform
+# Beamer Data Platform
