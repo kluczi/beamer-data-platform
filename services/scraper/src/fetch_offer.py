@@ -90,11 +90,3 @@ def scrape_offers_from_listing(urls: list[str]) -> list[Offer]:
         offer = map_advert_to_offer(advert)
         offers.append(offer)
     return offers
-
-
-def main():
-    print()
-
-
-if __name__ == "__main__":
-    main()
