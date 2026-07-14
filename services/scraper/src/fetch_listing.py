@@ -1,9 +1,6 @@
 import os
 import httpx
 import json
-from selectolax.parser import HTMLParser
-from src.models import Offer
-from datetime import datetime, timezone
 
 
 EXTENSIONS = {
