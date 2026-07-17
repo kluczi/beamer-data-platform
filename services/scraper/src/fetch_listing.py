@@ -118,8 +118,11 @@ def count_total_pages(data: dict) -> int:
 def scrape_listing_urls() -> list[str]:
     all_urls = []
     data = fetch_listing_page(page=1)
-    for page in range(1, count_total_pages(data)):
+    total_pages = count_total_pages(data)
+    all_urls.extend(extract_offer_urls(data))
+
+    for page in range(2, total_pages + 1):
         data = fetch_listing_page(page)
         curr_page_urls = extract_offer_urls(data)
-        all_urls.append(curr_page_urls)
+        all_urls.extend(curr_page_urls)
     return all_urls
