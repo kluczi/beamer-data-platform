@@ -22,7 +22,7 @@ def get_connection():
     conn.sql("INSTALL httpfs; LOAD httpfs;")
 
     conn.sql(f"""
-        IF NOT EXISTS CREATE SECRET minio_secret (
+        CREATE SECRET IF NOT EXISTS  minio_secret (
             TYPE s3,
             PROVIDER config,
             KEY_ID '{minio_root_user}',
@@ -45,9 +45,15 @@ def get_connection():
     return conn
 
 
+def create_raw_schema(conn):
+    conn.sql("""
+        CREATE SCHEMA IF NOT EXISTS raw;
+    """)
+
+
 def create_observed_table(conn):
     conn.sql("""
-        IF NOT EXISTS CREATE TABLE lake.raw.otomoto_offer_observations (
+        CREATE TABLE IF NOT EXISTS beamer_lake.raw.otomoto_offers_observations (
             source_offer_id VARCHAR,
             url VARCHAR,
             title VARCHAR,
@@ -59,8 +65,7 @@ def create_observed_table(conn):
             transmission VARCHAR,
             price_amount DOUBLE,
             price_currency VARCHAR,
-            observed_at TIMESTAMP,
-            scrape_run_id VARCHAR    
+            observed_at TIMESTAMP
         );
     """)
 
@@ -72,7 +77,7 @@ def load_offers(conn, batch: list[Offer]) -> None:
     df = pd.DataFrame(rows)  # make table like in sql or excel
     conn.register("offers_batch", df)  # make temporary table from data frame
     conn.sql("""
-        INSERT INTO lake.raw.otomoto_offers_observations
+        INSERT INTO beamer_lake.raw.otomoto_offers_observations
         SELECT
             source_offer_id,
             url,
@@ -88,7 +93,7 @@ def load_offers(conn, batch: list[Offer]) -> None:
             observed_at
         FROM offers_batch
     """)
-    conn.unregister("offers_batch", df)
+    conn.unregister("offers_batch")
 
 
 def offer_to_row(offer: Offer) -> dict:
@@ -109,14 +114,29 @@ def offer_to_row(offer: Offer) -> dict:
 
 
 def scrape_and_load_offers(conn) -> None:
+    create_raw_schema(conn)
+    create_observed_table(conn)
     BATCH_SIZE = 100
     batch = []
     urls = scrape_listing_urls()
     for idx, url in enumerate(urls):
         offer = scrape_offer_from_listing(url)
         batch.append(offer)
-        if len(batch >= BATCH_SIZE):
+        if len(batch) >= BATCH_SIZE:
             load_offers(conn, batch)
             batch.clear()
     if batch:
         load_offers(conn, batch)
+
+
+def main():
+    conn = get_connection()
+
+    try:
+        scrape_and_load_offers(conn)
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__":
+    main()
