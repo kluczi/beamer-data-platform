@@ -81,12 +81,10 @@ def map_advert_to_offer(advert: dict) -> Offer:
     )
 
 
-def scrape_offers_from_listing(urls: list[str]) -> list[Offer]:
-    offers = []
-    for url in urls:
-        html_code = fetch_offer_html(url)
-        next_data = extract_next_data(html_code)
-        advert = get_advert(next_data)
-        offer = map_advert_to_offer(advert)
-        offers.append(offer)
-    return offers
+def scrape_offer_from_listing(url: str) -> Offer:
+    html_code = fetch_offer_html(url)
+    next_data = extract_next_data(html_code)
+    advert = get_advert(next_data)
+    offer = map_advert_to_offer(advert)
+
+    return offer
