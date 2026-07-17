@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import duckdb
 from src.fetch_listing import scrape_listing_urls
+from src.fetch_offer import scrape_offer_from_listing
 from src.models import Offer
 
 
@@ -68,7 +69,7 @@ def load_offers(conn, batch: list[Offer]) -> None:
     if not batch:
         return
     rows = [offer_to_row(o) for o in batch]
-    df = pd.DataFrame(rows)  # make table like in sql
+    df = pd.DataFrame(rows)  # make table like in sql or excel
     conn.register("offers_batch", df)  # make temporary table from data frame
     conn.sql("""
         INSERT INTO lake.raw.otomoto_offers_observations
@@ -107,17 +108,15 @@ def offer_to_row(offer: Offer) -> dict:
     }
 
 
-def batch_urls(conn, urls: list[str]):
+def scrape_and_load_offers(conn) -> None:
     BATCH_SIZE = 100
     batch = []
-    for url in urls:
-        batch.append(url)
-    if len(batch >= BATCH_SIZE):
-        load_offers(conn, batch)
-        batch.clear()
+    urls = scrape_listing_urls()
+    for idx, url in enumerate(urls):
+        offer = scrape_offer_from_listing(url)
+        batch.append(offer)
+        if len(batch >= BATCH_SIZE):
+            load_offers(conn, batch)
+            batch.clear()
     if batch:
         load_offers(conn, batch)
-
-
-def scrape_and_load_offers(conn) -> None:
-    pass
