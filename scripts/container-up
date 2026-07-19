@@ -1,0 +1,105 @@
+#!/bin/sh
+# Start the development stack with Apple's `container` CLI (macOS 26+).
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ENV_FILE="$ROOT/.env"
+NETWORK=beamer
+DNS_DOMAIN=${CONTAINER_DNS_DOMAIN:-test}
+
+require() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "Missing required command: $1" >&2
+        exit 1
+    }
+}
+
+remove_container() {
+    container delete --force "$1" >/dev/null 2>&1 || true
+}
+
+wait_for() {
+    name=$1
+    shift
+    attempt=1
+    while ! "$@" >/dev/null 2>&1; do
+        if [ "$attempt" -ge 30 ]; then
+            echo "$name did not become ready; inspect it with: container logs $name" >&2
+            exit 1
+        fi
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+}
+
+require container
+[ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE" >&2; exit 1; }
+
+# shellcheck disable=SC1090
+set -a
+. "$ENV_FILE"
+set +a
+
+: "${POSTGRES_USER:?POSTGRES_USER must be set in .env}"
+: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}"
+: "${POSTGRES_DB:?POSTGRES_DB must be set in .env}"
+: "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in .env}"
+: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}"
+: "${MINIO_BUCKET:?MINIO_BUCKET must be set in .env}"
+: "${CLICKHOUSE_USER:?CLICKHOUSE_USER must be set in .env}"
+: "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set in .env}"
+CLICKHOUSE_DB=${CLICKHOUSE_DB:-beamer_warehouse}
+
+container system start
+if ! container network list --quiet | grep -Fx "$NETWORK" >/dev/null 2>&1; then
+    container network create "$NETWORK"
+fi
+
+remove_container beamer-scraper
+remove_container beamer-duckdb
+remove_container beamer-clickhouse
+remove_container beamer-minio
+remove_container beamer-postgres
+
+container run --detach --init --name beamer-postgres --network "$NETWORK" \
+    --env-file "$ENV_FILE" --publish 127.0.0.1:5432:5432 \
+    --volume beamer-postgres-data:/var/lib/postgresql/data \
+    docker.io/library/postgres:16
+wait_for beamer-postgres container exec beamer-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+
+container run --detach --init --name beamer-minio --network "$NETWORK" \
+    --env-file "$ENV_FILE" --publish 127.0.0.1:9000:9000 --publish 127.0.0.1:9001:9001 \
+    --volume beamer-minio-data:/data \
+    docker.io/minio/minio:latest server /data --console-address :9001
+
+container run --rm --network "$NETWORK" --env-file "$ENV_FILE" \
+    --env "MINIO_ENDPOINT=http://beamer-minio.${DNS_DOMAIN}:9000" \
+    docker.io/minio/mc:latest /bin/sh -ec '
+        mc alias set local "$MINIO_ENDPOINT" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+        until mc ready local >/dev/null 2>&1; do sleep 1; done
+        mc mb -p "local/$MINIO_BUCKET" || true
+    '
+
+container run --detach --init --name beamer-clickhouse --network "$NETWORK" \
+    --env-file "$ENV_FILE" --env "CLICKHOUSE_DB=$CLICKHOUSE_DB" \
+    --publish 127.0.0.1:8123:8123 --publish 127.0.0.1:9002:9000 \
+    --volume beamer-clickhouse-data:/var/lib/clickhouse \
+    docker.io/clickhouse/clickhouse-server:latest
+wait_for beamer-clickhouse container exec beamer-clickhouse clickhouse-client \
+    --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --query "SELECT 1"
+
+container run --detach --init --name beamer-duckdb --network "$NETWORK" --env-file "$ENV_FILE" \
+    --env "POSTGRES_HOST=beamer-postgres.${DNS_DOMAIN}" \
+    --env "MINIO_ENDPOINT=beamer-minio.${DNS_DOMAIN}:9000" \
+    --volume "$ROOT/scripts:/app/scripts" --workdir /app \
+    docker.io/library/python:3.12-slim sleep infinity
+
+container build --tag beamer-scraper:local --file "$ROOT/services/scraper/Dockerfile" "$ROOT/services/scraper"
+container run --detach --init --name beamer-scraper --network "$NETWORK" --env-file "$ENV_FILE" \
+    --env "POSTGRES_HOST=beamer-postgres.${DNS_DOMAIN}" \
+    --env "MINIO_ENDPOINT=beamer-minio.${DNS_DOMAIN}:9000" \
+    --env "CLICKHOUSE_HOST=beamer-clickhouse.${DNS_DOMAIN}" \
+    --volume "$ROOT/services/scraper/src:/app/src" \
+    beamer-scraper:local python -m src.main
+
+echo "Stack is running. Follow the pipeline with: container logs --follow beamer-scraper"

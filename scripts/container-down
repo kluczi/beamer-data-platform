@@ -1,0 +1,11 @@
+#!/bin/sh
+# Stop and remove this project's Apple Container containers. Data volumes remain intact.
+set -eu
+
+for name in beamer-scraper beamer-duckdb beamer-clickhouse beamer-minio beamer-postgres; do
+    container stop "$name" >/dev/null 2>&1 || true
+    container delete "$name" >/dev/null 2>&1 || true
+done
+
+container network delete beamer >/dev/null 2>&1 || true
+echo "Stopped project containers. Persistent data is still in beamer-*-data volumes."

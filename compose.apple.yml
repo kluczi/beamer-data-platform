@@ -1,0 +1,103 @@
+# Compose file for Container-Compose + Apple's `container` CLI (macOS 26+).
+# Start it with: container-compose --file compose.apple.yml up --build --detach
+name: beamer
+
+services:
+  postgres:
+    image: docker.io/library/postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Apple Container named volumes contain lost+found at their root.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [beamer]
+
+  minio:
+    image: docker.io/minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    networks: [beamer]
+
+  create-bucket:
+    image: docker.io/minio/mc:latest
+    env_file: .env
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: ["/bin/sh", "-ec"]
+    command: >-
+      mc alias set local http://minio.beamer:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}";
+      until mc ready local >/dev/null 2>&1; do sleep 1; done;
+      mc mb -p "local/${MINIO_BUCKET}" || true
+    networks: [beamer]
+
+  clickhouse:
+    image: docker.io/clickhouse/clickhouse-server:latest
+    environment:
+      # Container-Compose does not expand Compose's ${VAR:-default} form here.
+      CLICKHOUSE_DB: beamer_warehouse
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9002:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks: [beamer]
+
+  duckdb:
+    image: docker.io/library/python:3.12-slim
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres.beamer
+      MINIO_ENDPOINT: minio.beamer:9000
+    depends_on:
+      postgres:
+        condition: service_started
+      create-bucket:
+        condition: service_completed_successfully
+    volumes:
+      - ./scripts:/app/scripts
+    working_dir: /app
+    command: sleep infinity
+    networks: [beamer]
+
+  scraper:
+    build:
+      context: ./services/scraper
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres.beamer
+      MINIO_ENDPOINT: minio.beamer:9000
+      CLICKHOUSE_HOST: clickhouse.beamer
+    depends_on:
+      postgres:
+        condition: service_started
+      create-bucket:
+        condition: service_completed_successfully
+      clickhouse:
+        condition: service_started
+    volumes:
+      - ./services/scraper/src:/app/src
+    command: ["python", "-m", "src.main"]
+    networks: [beamer]
+
+networks:
+  beamer:
+
+volumes:
+  postgres_data:
+  minio_data:
+  clickhouse_data:
