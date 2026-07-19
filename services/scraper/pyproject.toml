@@ -7,6 +7,7 @@ dependencies = [
     "selectolax>=0.3.21",
     "pandas>=2.2.0",
     "duckdb>=1.0.0",
+    "clickhouse-connect>=0.8.0",
 ]
 
 [tool.setuptools]

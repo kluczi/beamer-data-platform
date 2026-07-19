@@ -4,11 +4,13 @@ import duckdb
 from src.fetch_listing import scrape_listing_urls
 from src.fetch_offer import scrape_offer_from_listing
 from src.models import Offer
+import uuid
 
 
 def get_connection():
     conn = duckdb.connect("pipeline.duckdb")
 
+    postgres_host = os.getenv("POSTGRES_HOST", "postgres")
     postgres_user = os.environ["POSTGRES_USER"]
     postgres_password = os.environ["POSTGRES_PASSWORD"]
     postgres_db = os.environ["POSTGRES_DB"]
@@ -16,6 +18,7 @@ def get_connection():
     minio_root_user = os.environ["MINIO_ROOT_USER"]
     minio_root_password = os.environ["MINIO_ROOT_PASSWORD"]
     minio_bucket = os.environ["MINIO_BUCKET"]
+    minio_endpoint = os.getenv("MINIO_ENDPOINT", "minio:9000")
 
     conn.sql("INSTALL ducklake; LOAD ducklake;")
     conn.sql("INSTALL postgres; LOAD postgres;")
@@ -28,14 +31,14 @@ def get_connection():
             KEY_ID '{minio_root_user}',
             SECRET '{minio_root_password}',
             REGION 'eu-central-1',
-            ENDPOINT 'minio:9000',
+            ENDPOINT '{minio_endpoint}',
             URL_STYLE 'path',
             USE_SSL false
         );
     """)
 
     conn.sql(f"""
-        ATTACH 'ducklake:postgres:host=postgres port=5432 dbname={postgres_db} user={postgres_user} password={postgres_password}'
+        ATTACH 'ducklake:postgres:host={postgres_host} port=5432 dbname={postgres_db} user={postgres_user} password={postgres_password}'
         AS beamer_lake
         (DATA_PATH 's3://{minio_bucket}/ducklake/');
     """)
@@ -65,7 +68,8 @@ def create_observed_table(conn):
             transmission VARCHAR,
             price_amount DOUBLE,
             price_currency VARCHAR,
-            observed_at TIMESTAMP
+            observed_at TIMESTAMP,
+            scrape_rund_id VARCHAR
         );
     """)
 
@@ -90,7 +94,8 @@ def load_offers(conn, batch: list[Offer]) -> None:
             transmission,
             price_amount,
             price_currency,
-            observed_at
+            observed_at,
+            scrape_run_id
         FROM offers_batch
     """)
     conn.unregister("offers_batch")
@@ -110,12 +115,14 @@ def offer_to_row(offer: Offer) -> dict:
         "price_amount": offer.price_amount,
         "price_currency": offer.price_currency,
         "observed_at": offer.observed_at,
+        "scrape_run_id": offer.scrape_run_id,
     }
 
 
 def scrape_and_load_offers(conn) -> None:
     create_raw_schema(conn)
     create_observed_table(conn)
+    scrape_run_id = str(uuid.uuid4())
     BATCH_SIZE = 100
     batch = []
     urls = scrape_listing_urls()

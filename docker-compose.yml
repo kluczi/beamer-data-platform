@@ -74,12 +74,38 @@ services:
             - ./scripts:/app/scripts
         working_dir: /app
         command: sleep infinity
+
+    clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        container_name: beamer_clickhouse
+        environment:
+            CLICKHOUSE_DB: ${CLICKHOUSE_DB:-beamer_warehouse}
+            CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+            CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+        ports:
+            - "8123:8123"
+            - "9002:9000"
+        volumes:
+            - clickhouse_data:/var/lib/clickhouse
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "clickhouse-client --user $${CLICKHOUSE_USER} --password $${CLICKHOUSE_PASSWORD} --query 'SELECT 1'"
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 20
+
     scraper:
         build:
             context: ./services/scraper
         container_name: beamer_scraper
         env_file:
             - .env
+        depends_on:
+            clickhouse:
+                condition: service_healthy
         volumes:
             - ./services/scraper/src:/app/src
         command:
@@ -92,3 +118,4 @@ services:
 volumes:
     postgres_data:
     minio_data:
+    clickhouse_data:

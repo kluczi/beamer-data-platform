@@ -15,3 +15,4 @@ class Offer:
     price_amount: float
     price_currency: str
     observed_at: str
+    scrape_run_id: str

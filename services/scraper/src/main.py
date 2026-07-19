@@ -1,16 +1,10 @@
-from src.fetch_offer import scrape_offers_from_listing
-from src.fetch_listing import scrape_listing_urls
+from src.load_into_datalake import main as load_into_datalake
+from src.clickhouse import initialize_warehouse
 
 
 def main():
-    urls = scrape_listing_urls()
-    for url in urls:
-        print(f"{url}\n")
-    offers = []
-    for url in urls:
-        offers.append(scrape_offers_from_listing(url))
-    for offer in offers:
-        print(f"{offer}\n")
+    initialize_warehouse()
+    load_into_datalake()
 
 
 if __name__ == "__main__":
