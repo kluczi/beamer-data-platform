@@ -48,7 +48,7 @@ def get_advert(next_data: dict) -> dict:
     return next_data["props"]["pageProps"]["advert"]
 
 
-def map_advert_to_offer(advert: dict) -> Offer:
+def map_advert_to_offer(advert: dict, scrape_run_id: str) -> Offer:
 
     offer_id = advert["id"]
     url = advert["url"]
@@ -78,13 +78,14 @@ def map_advert_to_offer(advert: dict) -> Offer:
         price_amount=float(price_amount),
         price_currency=price_currency,
         observed_at=datetime.now(timezone.utc),
+        scrape_run_id=scrape_run_id,
     )
 
 
-def scrape_offer_from_listing(url: str) -> Offer:
+def scrape_offer_from_listing(url: str, scrape_run_id: str) -> Offer:
     html_code = fetch_offer_html(url)
     next_data = extract_next_data(html_code)
     advert = get_advert(next_data)
-    offer = map_advert_to_offer(advert)
+    offer = map_advert_to_offer(advert, scrape_run_id)
 
     return offer
