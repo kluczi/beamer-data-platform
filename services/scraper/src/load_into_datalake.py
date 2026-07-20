@@ -69,7 +69,7 @@ def create_observed_table(conn):
             price_amount DOUBLE,
             price_currency VARCHAR,
             observed_at TIMESTAMP,
-            scrape_rund_id VARCHAR
+            scrape_run_id VARCHAR
         );
     """)
 
@@ -127,7 +127,7 @@ def scrape_and_load_offers(conn) -> None:
     batch = []
     urls = scrape_listing_urls()
     for idx, url in enumerate(urls):
-        offer = scrape_offer_from_listing(url)
+        offer = scrape_offer_from_listing(url, scrape_run_id)
         batch.append(offer)
         if len(batch) >= BATCH_SIZE:
             load_offers(conn, batch)
