@@ -67,7 +67,8 @@ services:
       postgres:
         condition: service_started
       create-bucket:
-        condition: service_completed_successfully
+        # Container-Compose cannot report an Apple one-shot container's exit status.
+        condition: service_started
     volumes:
       - ./scripts:/app/scripts
     working_dir: /app
@@ -86,7 +87,8 @@ services:
       postgres:
         condition: service_started
       create-bucket:
-        condition: service_completed_successfully
+        # Container-Compose cannot report an Apple one-shot container's exit status.
+        condition: service_started
       clickhouse:
         condition: service_started
     volumes:
