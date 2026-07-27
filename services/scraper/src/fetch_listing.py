@@ -42,7 +42,7 @@ def fetch_listing_page(page: int = 1) -> dict:
     headers = {
         "accept": "application/graphql-response+json, application/graphql+json, application/json",
         "referer": os.getenv("REFERER_URL"),
-        "sitecode": "otomotopl",
+        "sitecode": os.getenv("SITECODE"),
         "user-agent": (
             "Mozilla/5.0 (Linux; Android 15; Pixel 9) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "

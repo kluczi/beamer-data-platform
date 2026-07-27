@@ -56,7 +56,7 @@ def create_raw_schema(conn):
 
 def create_observed_table(conn):
     conn.sql("""
-        CREATE TABLE IF NOT EXISTS beamer_lake.raw.otomoto_offers_observations (
+        CREATE TABLE IF NOT EXISTS beamer_lake.raw.offers_observations (
             source_offer_id VARCHAR,
             url VARCHAR,
             title VARCHAR,
@@ -81,7 +81,7 @@ def load_offers(conn, batch: list[Offer]) -> None:
     df = pd.DataFrame(rows)  # make table like in sql or excel
     conn.register("offers_batch", df)  # make temporary table from data frame
     conn.sql("""
-        INSERT INTO beamer_lake.raw.otomoto_offers_observations
+        INSERT INTO beamer_lake.raw.offers_observations
         SELECT
             source_offer_id,
             url,
@@ -119,7 +119,7 @@ def offer_to_row(offer: Offer) -> dict:
     }
 
 
-def scrape_and_load_offers(conn) -> None:
+def scrape_and_load_offers(conn) -> str:
     create_raw_schema(conn)
     create_observed_table(conn)
     scrape_run_id = str(uuid.uuid4())
@@ -134,13 +134,14 @@ def scrape_and_load_offers(conn) -> None:
             batch.clear()
     if batch:
         load_offers(conn, batch)
+    return scrape_run_id
 
 
 def main():
     conn = get_connection()
 
     try:
-        scrape_and_load_offers(conn)
+        return scrape_and_load_offers(conn)
     finally:
         conn.close()
 
