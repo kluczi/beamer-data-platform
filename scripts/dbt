@@ -1,0 +1,38 @@
+#!/bin/sh
+# Run dbt Core against the local ClickHouse warehouse using Apple's container CLI.
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ENV_FILE="$ROOT/.env"
+NETWORK=beamer
+DNS_DOMAIN=${CONTAINER_DNS_DOMAIN:-beamer}
+CLICKHOUSE_CONTAINER="beamer-clickhouse.${DNS_DOMAIN}"
+DBT_IMAGE=beamer-dbt:local
+
+require() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "Missing required command: $1" >&2
+        exit 1
+    }
+}
+
+container_ip() {
+    container inspect "$1" | sed -n 's/.*"ipv4Address" : "\([0-9.]*\)\\\/.*$/\1/p' | head -n 1
+}
+
+require container
+[ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE" >&2; exit 1; }
+container list --all | grep -q "^$CLICKHOUSE_CONTAINER " || {
+    echo "ClickHouse is not running. Start the stack first with: ./scripts/container-up" >&2
+    exit 1
+}
+
+CLICKHOUSE_IP=$(container_ip "$CLICKHOUSE_CONTAINER")
+[ -n "$CLICKHOUSE_IP" ] || { echo "Could not determine ClickHouse container IP" >&2; exit 1; }
+
+container build --tag "$DBT_IMAGE" --file "$ROOT/dbt/Dockerfile" "$ROOT/dbt"
+container run --rm --network "$NETWORK" --env-file "$ENV_FILE" \
+    --env "CLICKHOUSE_HOST=$CLICKHOUSE_IP" \
+    --env "DBT_PROFILES_DIR=/app" \
+    --volume "$ROOT/dbt:/app" --workdir /app \
+    "$DBT_IMAGE" "$@"

@@ -23,13 +23,32 @@ replaced with the two scripts below.
    ```
 
 Service ports remain available only on localhost: PostgreSQL `5432`, MinIO API
-`9000`, MinIO Console `9001`, ClickHouse HTTP `8123`, and ClickHouse native
-`9002`.
+`9000`, MinIO Console `9001`, ClickHouse HTTP `8123`, ClickHouse native
+`9002`, and CH-UI `3488`.
 
-The launcher uses the Apple Container DNS domain `test`, so services refer to
-one another as `beamer-postgres.test`, `beamer-minio.test`, and
-`beamer-clickhouse.test`. If your Container configuration uses another domain,
-run `CONTAINER_DNS_DOMAIN=your-domain ./scripts/container-up`.
+Open [CH-UI](http://localhost:3488) to browse and query ClickHouse. On first
+use, sign in with the `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD` values from
+`.env`. Its workspace state is persisted in the `beamer-ch-ui-data` volume.
+
+The scraper first writes immutable offer observations to DuckLake in MinIO. It
+then loads every DuckLake scrape run not yet recorded in ClickHouse into
+`beamer_warehouse.raw_offers_observations`, which is the table to use
+from CH-UI.
+
+## dbt transformations
+
+dbt models live in `dbt/` and run in a local container against the
+ClickHouse warehouse. After starting the stack, validate the connection and
+build the models with:
+
+```sh
+./scripts/dbt debug
+./scripts/dbt build
+```
+
+The starter mart, `beamer_warehouse.fct_offers_latest`, keeps the most
+recent observation for each offer. Use `./scripts/dbt test` to run source and
+model tests.
 
 To stop the stack while retaining all database/object-store data:
 

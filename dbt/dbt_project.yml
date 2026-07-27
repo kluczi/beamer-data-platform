@@ -1,0 +1,17 @@
+name: beamer_analytics
+version: "1.0.0"
+config-version: 2
+
+profile: beamer_clickhouse
+
+model-paths: ["models"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  beamer_analytics:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

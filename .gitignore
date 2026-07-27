@@ -117,6 +117,10 @@ ipython_config.py
 .pdm-python
 .pdm-build/
 
+# dbt build artifacts
+dbt/target/
+dbt/logs/
+
 # pixi
 #   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
 # pixi.lock

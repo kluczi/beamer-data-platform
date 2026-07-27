@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+    - name: raw
+      schema: beamer_warehouse
+      tables:
+          - name: offers_observations
+            identifier: raw_offers_observations
+            description: Offer observations copied from DuckLake into ClickHouse.
+            columns:
+                - name: source_offer_id
+                  tests:
+                      [
+                          not_null
+                      ]
+                - name: observed_at
+                  tests:
+                      [
+                          not_null
+                      ]
