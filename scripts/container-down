@@ -2,7 +2,11 @@
 # Stop and remove this project's Apple Container containers. Data volumes remain intact.
 set -eu
 
-for name in beamer-scraper beamer-duckdb beamer-clickhouse beamer-minio beamer-postgres; do
+DNS_DOMAIN=${CONTAINER_DNS_DOMAIN:-beamer}
+
+for name in beamer-scraper beamer-duckdb beamer-ch-ui beamer-clickhouse beamer-minio beamer-postgres \
+    "beamer-scraper.${DNS_DOMAIN}" "beamer-duckdb.${DNS_DOMAIN}" "beamer-ch-ui.${DNS_DOMAIN}" \
+    "beamer-clickhouse.${DNS_DOMAIN}" "beamer-minio.${DNS_DOMAIN}" "beamer-postgres.${DNS_DOMAIN}"; do
     container stop "$name" >/dev/null 2>&1 || true
     container delete "$name" >/dev/null 2>&1 || true
 done

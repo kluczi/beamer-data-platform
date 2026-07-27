@@ -57,6 +57,21 @@ services:
       - clickhouse_data:/var/lib/clickhouse
     networks: [beamer]
 
+  ch-ui:
+    image: ghcr.io/caioricciuti/ch-ui:latest
+    user: "0:0"
+    environment:
+      CLICKHOUSE_URL: http://clickhouse.beamer:8123
+      CONNECTION_NAME: Beamer ClickHouse
+    ports:
+      - "127.0.0.1:3488:3488"
+    volumes:
+      - ch_ui_data:/app/data
+    depends_on:
+      clickhouse:
+        condition: service_started
+    networks: [beamer]
+
   duckdb:
     image: docker.io/library/python:3.12-slim
     env_file: .env
@@ -103,3 +118,4 @@ volumes:
   postgres_data:
   minio_data:
   clickhouse_data:
+  ch_ui_data:

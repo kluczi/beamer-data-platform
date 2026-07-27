@@ -97,6 +97,21 @@ services:
             timeout: 5s
             retries: 20
 
+    ch-ui:
+        image: ghcr.io/caioricciuti/ch-ui:latest
+        container_name: beamer_ch_ui
+        user: "0:0"
+        environment:
+            CLICKHOUSE_URL: http://clickhouse:8123
+            CONNECTION_NAME: Beamer ClickHouse
+        ports:
+            - "127.0.0.1:3488:3488"
+        volumes:
+            - ch_ui_data:/app/data
+        depends_on:
+            clickhouse:
+                condition: service_healthy
+
     scraper:
         build:
             context: ./services/scraper
@@ -119,3 +134,4 @@ volumes:
     postgres_data:
     minio_data:
     clickhouse_data:
+    ch_ui_data:
