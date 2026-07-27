@@ -1,0 +1,20 @@
+#!/bin/sh
+# Send the Discord service's test alert with Apple's `container` CLI.
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ENV_FILE="$ROOT/.env"
+IMAGE=beamer-discord-alert:local
+
+require() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "Missing required command: $1" >&2
+        exit 1
+    }
+}
+
+require container
+[ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE" >&2; exit 1; }
+
+container build --tag "$IMAGE" --file "$ROOT/services/discord/Dockerfile" "$ROOT/services/discord"
+container run --rm --env-file "$ENV_FILE" "$IMAGE"

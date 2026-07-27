@@ -129,6 +129,14 @@ services:
                 "-m",
                 "src.main"
             ]
+    discord_alerts:
+        build:
+            context: ./services/discord
+        container_name: beamer_discord_alerts
+        env_file:
+            - .env
+        profiles:
+            - alerts
 
 volumes:
     postgres_data:

@@ -50,6 +50,15 @@ The starter mart, `beamer_warehouse.fct_offers_latest`, keeps the most
 recent observation for each offer. Use `./scripts/dbt test` to run source and
 model tests.
 
+## Discord alert test
+
+Set `DISCORD_WEBHOOK_URL` in `.env`, then send the Discord service's test
+message without starting it as part of the default stack:
+
+```sh
+./scripts/discord-alert
+```
+
 To stop the stack while retaining all database/object-store data:
 
 ```sh
