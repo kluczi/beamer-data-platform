@@ -1,0 +1,43 @@
+version: 2
+
+models:
+    - name: dim_offers
+      description: One current descriptive record for every offer.
+      columns:
+          - name: offer_key
+            description: Stable source identifier for the offer.
+            tests:
+                [
+                    not_null,
+                    unique
+                ]
+          - name: first_observed_at
+            description: Timestamp of the first recorded observation.
+            tests:
+                [
+                    not_null
+                ]
+          - name: last_observed_at
+            description: Timestamp of the latest recorded observation.
+            tests:
+                [
+                    not_null
+                ]
+
+    - name: fct_offer_observations
+      description: One row per observed offer state during a scrape run.
+      columns:
+          - name: offer_key
+            description: Foreign key to dim_offers.
+            tests:
+                - not_null
+                - relationships:
+                      arguments:
+                          to: ref('dim_offers')
+                          field: offer_key
+          - name: observed_at
+            description: Timestamp when the offer state was observed.
+            tests:
+                [
+                    not_null
+                ]
