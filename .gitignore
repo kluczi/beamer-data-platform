@@ -120,6 +120,7 @@ ipython_config.py
 # dbt build artifacts
 dbt/target/
 dbt/logs/
+dbt/.user.yml
 
 # pixi
 #   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
