@@ -46,9 +46,9 @@ build the models with:
 ./scripts/dbt build
 ```
 
-The starter mart, `beamer_warehouse.fct_offers_latest`, keeps the most
-recent observation for each offer. Use `./scripts/dbt test` to run source and
-model tests.
+The starter star schema includes `beamer_warehouse.dim_offers` (one row per
+offer) and `beamer_warehouse.fct_offer_observations` (one row per observed
+offer state). Use `./scripts/dbt test` to run source and model tests.
 
 ## Discord alert test
 
