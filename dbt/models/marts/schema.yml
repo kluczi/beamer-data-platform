@@ -37,6 +37,12 @@ models:
                 [
                     not_null
                 ]
+          - name: observation_count
+            description: Number of recorded observations for this offer, including the current one.
+            tests:
+                [
+                    not_null
+                ]
 
     - name: fct_offer_observations
       description: One row per observed offer state during a scrape run. The grain is one row per offer_key and observed_at.
