@@ -2,7 +2,7 @@ version: 2
 
 models:
     - name: dim_offers
-      description: One current descriptive record for every offer.
+      description: One current descriptive record per offer. The grain is one row per offer_key.
       columns:
           - name: offer_key
             description: Stable source identifier for the offer.
@@ -11,6 +11,20 @@ models:
                     not_null,
                     unique
                 ]
+          - name: url
+            description: Source URL for the current offer listing.
+          - name: title
+            description: Current listing title supplied by the source.
+          - name: brand
+            description: Current vehicle brand supplied by the source.
+          - name: model
+            description: Current vehicle model supplied by the source.
+          - name: year
+            description: Current model year supplied by the source.
+          - name: fuel_type
+            description: Current fuel type supplied by the source.
+          - name: transmission
+            description: Current transmission type supplied by the source.
           - name: first_observed_at
             description: Timestamp of the first recorded observation.
             tests:
@@ -23,9 +37,15 @@ models:
                 [
                     not_null
                 ]
+          - name: observation_count
+            description: Number of recorded observations for this offer, including the current one.
+            tests:
+                [
+                    not_null
+                ]
 
     - name: fct_offer_observations
-      description: One row per observed offer state during a scrape run.
+      description: One row per observed offer state during a scrape run. The grain is one row per offer_key and observed_at.
       columns:
           - name: offer_key
             description: Foreign key to dim_offers.
@@ -36,8 +56,16 @@ models:
                           to: ref('dim_offers')
                           field: offer_key
           - name: observed_at
-            description: Timestamp when the offer state was observed.
+            description: Timestamp when this offer state was observed.
             tests:
                 [
                     not_null
                 ]
+          - name: price_amount
+            description: Listed price amount observed at this timestamp.
+          - name: price_currency
+            description: Currency of the listed price.
+          - name: mileage_km
+            description: Listed vehicle mileage in kilometres.
+          - name: scrape_run_id
+            description: Identifier of the scrape run that produced this observation.

@@ -22,10 +22,25 @@ container_ip() {
 
 require container
 [ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE" >&2; exit 1; }
-container list --all | grep -q "^$CLICKHOUSE_CONTAINER " || {
-    echo "ClickHouse is not running. Start the stack first with: ./scripts/container-up" >&2
+
+# shellcheck disable=SC1090
+set -a
+. "$ENV_FILE"
+set +a
+
+: "${CLICKHOUSE_USER:?CLICKHOUSE_USER must be set in .env}"
+: "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set in .env}"
+
+container list | grep -q "^$CLICKHOUSE_CONTAINER " || {
+    echo "ClickHouse container is not running. Start the stack first with: ./scripts/container-up" >&2
     exit 1
 }
+
+if ! container exec "$CLICKHOUSE_CONTAINER" clickhouse-client \
+    --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --query "SELECT 1" >/dev/null 2>&1; then
+    echo "ClickHouse is not ready. Wait a moment and run the command again." >&2
+    exit 1
+fi
 
 CLICKHOUSE_IP=$(container_ip "$CLICKHOUSE_CONTAINER")
 [ -n "$CLICKHOUSE_IP" ] || { echo "Could not determine ClickHouse container IP" >&2; exit 1; }
