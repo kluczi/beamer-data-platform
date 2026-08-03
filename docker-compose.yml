@@ -135,6 +135,9 @@ services:
         container_name: beamer_discord_alerts
         env_file:
             - .env
+        depends_on:
+            clickhouse:
+                condition: service_healthy
         profiles:
             - alerts
 

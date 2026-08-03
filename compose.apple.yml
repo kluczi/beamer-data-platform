@@ -111,6 +111,17 @@ services:
     command: ["python", "-m", "src.main"]
     networks: [beamer]
 
+  discord-alerts:
+    build:
+      context: ./services/discord
+    env_file: .env
+    environment:
+      CLICKHOUSE_HOST: clickhouse.beamer
+    depends_on:
+      clickhouse:
+        condition: service_started
+    networks: [beamer]
+
 networks:
   beamer:
 
