@@ -66,8 +66,11 @@ def send_discord_webhook(content: str) -> None:
 
 def main():
     interval_seconds = int(os.getenv("DISCORD_ALERT_INTERVAL_SECONDS", "86400"))
+    run_once = os.getenv("DISCORD_ALERT_RUN_ONCE", "").lower() in {"1", "true", "yes"}
     while True:
         send_discord_webhook(format_latest_offers_message(get_latest_offers()))
+        if run_once:
+            return
         time.sleep(interval_seconds)
 
 
