@@ -1,33 +1,34 @@
 import os
 import time
 
-import clickhouse_connect
 import httpx
+from clickhouse_driver import Client
 
 
 def get_latest_offers() -> list[dict]:
-    client = clickhouse_connect.get_client(
+    client = Client(
         host=os.getenv("CLICKHOUSE_HOST", "clickhouse"),
-        port=int(os.getenv("CLICKHOUSE_PORT", "8123")),
-        username=os.environ["CLICKHOUSE_USER"],
+        port=int(os.getenv("CLICKHOUSE_NATIVE_PORT", "9000")),
+        user=os.environ["CLICKHOUSE_USER"],
         password=os.environ["CLICKHOUSE_PASSWORD"],
         database=os.getenv("CLICKHOUSE_DB", "beamer_warehouse"),
         connect_timeout=10,
         send_receive_timeout=30,
     )
     try:
-        result = client.query(
+        rows, columns = client.execute(
             """
             SELECT title, brand, model, year, mileage_km, price_amount,
                    price_currency, url, observed_at
             FROM raw_offers_observations
             ORDER BY observed_at DESC
             LIMIT 10
-            """
+            """,
+            with_column_types=True,
         )
-        return [dict(zip(result.column_names, row)) for row in result.result_rows]
+        return [dict(zip((column[0] for column in columns), row)) for row in rows]
     finally:
-        client.close()
+        client.disconnect()
 
 
 def format_latest_offers_message(rows: list[dict]) -> str:
