@@ -41,3 +41,42 @@ models:
                 [
                     not_null
                 ]
+
+    - name: agg_offers_by_brand
+      description: Current offer counts grouped by brand.
+      columns:
+          - name: brand
+            description: Brand from the current offer record.
+          - name: offer_count
+            description: Number of current offers for the brand.
+            tests:
+                - not_null
+
+    - name: agg_offers_by_fuel_type
+      description: Current offer counts grouped by fuel type.
+      columns:
+          - name: fuel_type
+            description: Fuel type from the current offer record.
+          - name: offer_count
+            description: Number of current offers for the fuel type.
+            tests:
+                - not_null
+
+    - name: agg_daily_offer_observations
+      description: Daily volume and price summary for observed offer states.
+      columns:
+          - name: observation_date
+            description: Calendar date of the offer observation.
+            tests:
+                - not_null
+                - unique
+          - name: observation_count
+            description: Number of offer observations recorded on the date.
+            tests:
+                - not_null
+          - name: distinct_offer_count
+            description: Number of distinct offers observed on the date.
+            tests:
+                - not_null
+          - name: average_price_amount
+            description: Average listed price across observations on the date.
