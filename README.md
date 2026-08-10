@@ -46,8 +46,8 @@ build the models with:
 ./scripts/dbt build
 ```
 
-The starter star schema includes `beamer_warehouse.dim_offers` (one row per
-offer) and `beamer_warehouse.fct_offer_observations` (one row per observed
+The starter star schema includes `beamer_warehouse.dim__offers` (one row per
+offer) and `beamer_warehouse.fct__offer_observations` (one row per observed
 offer state). Use `./scripts/dbt test` to run source and model tests.
 
 ## Discord alert test
