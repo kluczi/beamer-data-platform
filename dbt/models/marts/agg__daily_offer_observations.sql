@@ -8,5 +8,5 @@ SELECT
     count() AS observation_count,
     uniqExact(offer_key) AS distinct_offer_count,
     avg(price_amount) AS average_price_amount
-FROM {{ ref('fct_offer_observations') }}
+FROM {{ ref('fct__offer_observations') }}
 GROUP BY observation_date

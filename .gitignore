@@ -122,6 +122,9 @@ dbt/target/
 dbt/logs/
 dbt/.user.yml
 
+# Local analytics planning notes
+dbt/models/marts/REPORT_IDEAS.md
+
 # pixi
 #   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
 # pixi.lock

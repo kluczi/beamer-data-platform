@@ -6,5 +6,5 @@
 SELECT
     brand,
     count() AS offer_count
-FROM {{ ref('dim_offers') }}
+FROM {{ ref('dim__offers') }}
 GROUP BY brand
