@@ -18,14 +18,14 @@ WITH ranked_offer_observations AS (
             PARTITION BY source_offer_id
             ORDER BY observed_at DESC
         ) AS observation_rank
-    FROM {{ ref('stg__offers_observations') }}
+    FROM {{ ref('stg_raw__offers_observations') }}
 ), offer_history AS (
     SELECT
         source_offer_id,
         min(observed_at) AS first_observed_at,
         max(observed_at) AS last_observed_at,
         count() AS observation_count
-    FROM {{ ref('stg__offers_observations') }}
+    FROM {{ ref('stg_raw__offers_observations') }}
     GROUP BY source_offer_id
 )
 

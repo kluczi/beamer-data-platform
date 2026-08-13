@@ -10,4 +10,4 @@ SELECT
     price_currency,
     mileage_km,
     scrape_run_id
-FROM {{ ref('stg__offers_observations') }}
+FROM {{ ref('stg_raw__offers_observations') }}
