@@ -3,8 +3,8 @@
     order_by='offer_key'
 ) }}
 
-WITH ranked_offer_observations AS (
-    SELECT
+with ranked_offer_observations as (
+    select
         source_offer_id,
         url,
         title,
@@ -14,23 +14,23 @@ WITH ranked_offer_observations AS (
         fuel_type,
         transmission,
         observed_at,
-        row_number() OVER (
-            PARTITION BY source_offer_id
-            ORDER BY observed_at DESC
-        ) AS observation_rank
-    FROM {{ ref('stg_raw__offers_observations') }}
-), offer_history AS (
-    SELECT
+        row_number() over (
+            partition by source_offer_id
+            order by observed_at desc
+        ) as observation_rank
+    from {{ ref('stg_raw__offers_observations') }}
+), offer_history as (
+    select
         source_offer_id,
-        min(observed_at) AS first_observed_at,
-        max(observed_at) AS last_observed_at,
-        count() AS observation_count
-    FROM {{ ref('stg_raw__offers_observations') }}
-    GROUP BY source_offer_id
+        min(observed_at) as first_observed_at,
+        max(observed_at) as last_observed_at,
+        count() as observation_count
+    from {{ ref('stg_raw__offers_observations') }}
+    group by source_offer_id
 )
 
-SELECT
-    ranked_offer_observations.source_offer_id AS offer_key,
+select
+    ranked_offer_observations.source_offer_id as offer_key,
     ranked_offer_observations.url,
     ranked_offer_observations.title,
     ranked_offer_observations.brand,
@@ -41,7 +41,7 @@ SELECT
     offer_history.first_observed_at,
     offer_history.last_observed_at,
     offer_history.observation_count
-FROM ranked_offer_observations
-JOIN offer_history
-    ON ranked_offer_observations.source_offer_id = offer_history.source_offer_id
-WHERE ranked_offer_observations.observation_rank = 1
+from ranked_offer_observations
+join offer_history
+    on ranked_offer_observations.source_offer_id = offer_history.source_offer_id
+where ranked_offer_observations.observation_rank = 1
