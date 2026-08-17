@@ -3,8 +3,8 @@
     order_by='fuel_type'
 ) }}
 
-SELECT
-    fuel_type,
-    count() AS offer_count
-FROM {{ ref('dim__offers') }}
-GROUP BY fuel_type
+select
+    ifNull(fuel_type, 'unknown') as fuel_type,
+    count() as offer_count
+from {{ ref('dim__offers') }}
+group by fuel_type
