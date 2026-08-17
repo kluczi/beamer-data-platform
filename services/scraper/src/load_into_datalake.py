@@ -20,43 +20,43 @@ def get_connection():
     minio_bucket = os.environ["MINIO_BUCKET"]
     minio_endpoint = os.getenv("MINIO_ENDPOINT", "minio:9000")
 
-    conn.sql("INSTALL ducklake; LOAD ducklake;")
-    conn.sql("INSTALL postgres; LOAD postgres;")
-    conn.sql("INSTALL httpfs; LOAD httpfs;")
+    conn.sql("install ducklake; load ducklake;")
+    conn.sql("install postgres; load postgres;")
+    conn.sql("install httpfs; load httpfs;")
 
     conn.sql(f"""
-        CREATE SECRET IF NOT EXISTS  minio_secret (
-            TYPE s3,
-            PROVIDER config,
-            KEY_ID '{minio_root_user}',
-            SECRET '{minio_root_password}',
-            REGION 'eu-central-1',
-            ENDPOINT '{minio_endpoint}',
-            URL_STYLE 'path',
-            USE_SSL false
+        create secret if not exists minio_secret (
+            type s3,
+            provider config,
+            key_id '{minio_root_user}',
+            secret '{minio_root_password}',
+            region 'eu-central-1',
+            endpoint '{minio_endpoint}',
+            url_style 'path',
+            use_ssl false
         );
     """)
 
     conn.sql(f"""
-        ATTACH 'ducklake:postgres:host={postgres_host} port=5432 dbname={postgres_db} user={postgres_user} password={postgres_password}'
-        AS beamer_lake
-        (DATA_PATH 's3://{minio_bucket}/ducklake/');
+        attach 'ducklake:postgres:host={postgres_host} port=5432 dbname={postgres_db} user={postgres_user} password={postgres_password}'
+        as beamer_lake
+        (data_path 's3://{minio_bucket}/ducklake/');
     """)
 
-    conn.sql("USE beamer_lake;")
+    conn.sql("use beamer_lake;")
 
     return conn
 
 
 def create_raw_schema(conn):
     conn.sql("""
-        CREATE SCHEMA IF NOT EXISTS raw;
+        create schema if not exists raw;
     """)
 
 
 def create_observed_table(conn):
     conn.sql("""
-        CREATE TABLE IF NOT EXISTS beamer_lake.raw.offers_observations (
+        create table if not exists beamer_lake.raw.offers_observations (
             source_offer_id VARCHAR,
             url VARCHAR,
             title VARCHAR,
@@ -81,8 +81,8 @@ def load_offers(conn, batch: list[Offer]) -> None:
     df = pd.DataFrame(rows)  # make table like in sql or excel
     conn.register("offers_batch", df)  # make temporary table from data frame
     conn.sql("""
-        INSERT INTO beamer_lake.raw.offers_observations
-        SELECT
+        insert into beamer_lake.raw.offers_observations
+        select
             source_offer_id,
             url,
             title,
@@ -96,7 +96,7 @@ def load_offers(conn, batch: list[Offer]) -> None:
             price_currency,
             observed_at,
             scrape_run_id
-        FROM offers_batch
+        from offers_batch
     """)
     conn.unregister("offers_batch")
 
