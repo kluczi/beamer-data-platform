@@ -3,8 +3,8 @@
     order_by='brand'
 ) }}
 
-SELECT
-    brand,
-    count() AS offer_count
-FROM {{ ref('dim__offers') }}
-GROUP BY brand
+select
+    ifNull(brand, 'unknown') as brand,
+    count() as offer_count
+from {{ ref('dim__offers') }}
+group by brand
