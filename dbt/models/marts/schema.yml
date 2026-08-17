@@ -108,3 +108,34 @@ models:
                 - not_null
           - name: average_price_amount
             description: Average listed price across observations on the date.
+
+    - name: rpt__marketplace_overview
+      description: Daily marketplace overview for headline inventory and scraper-activity reporting.
+      columns:
+          - name: observation_date
+            description: Calendar date represented by the overview row.
+            tests:
+                - not_null
+                - unique
+          - name: current_offer_count
+            description: Total number of offers represented in the current offer dimension.
+            tests:
+                - not_null
+          - name: new_offer_count
+            description: Number of offers first observed on this date.
+            tests:
+                - not_null
+          - name: cumulative_offer_count
+            description: Running total of offers first observed through this date.
+            tests:
+                - not_null
+          - name: observation_count
+            description: Number of offer observations collected on this date.
+            tests:
+                - not_null
+          - name: distinct_offer_count
+            description: Number of distinct offers observed on this date.
+            tests:
+                - not_null
+          - name: average_price_amount
+            description: Average listed price across observations on this date.

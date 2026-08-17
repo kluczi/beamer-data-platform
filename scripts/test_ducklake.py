@@ -13,35 +13,35 @@ MINIO_BUCKET = os.environ["MINIO_BUCKET"]
 
 con = duckdb.connect()
 
-con.execute("INSTALL ducklake; LOAD ducklake;")
-con.execute("INSTALL postgres; LOAD postgres;")
-con.execute("INSTALL httpfs; LOAD httpfs;")
+con.execute("install ducklake; load ducklake;")
+con.execute("install postgres; load postgres;")
+con.execute("install httpfs; load httpfs;")
 
 con.execute(f"""
-    CREATE OR REPLACE SECRET minio_secret (
-        TYPE s3,
-        PROVIDER config,
-        KEY_ID '{MINIO_ROOT_USER}',
-        SECRET '{MINIO_ROOT_PASSWORD}',
-        REGION 'us-east-1',
-        ENDPOINT 'minio:9000',
-        URL_STYLE 'path',
-        USE_SSL false
+    create or replace secret minio_secret (
+        type s3,
+        provider config,
+        key_id '{MINIO_ROOT_USER}',
+        secret '{MINIO_ROOT_PASSWORD}',
+        region 'us-east-1',
+        endpoint 'minio:9000',
+        url_style 'path',
+        use_ssl false
     );
 """)
 
 con.execute(f"""
-    ATTACH 'ducklake:postgres:host=postgres port=5432 dbname={POSTGRES_DB} user={POSTGRES_USER} password={POSTGRES_PASSWORD}'
-    AS beamer_lake
-    (DATA_PATH 's3://{MINIO_BUCKET}/ducklake/');
+    attach 'ducklake:postgres:host=postgres port=5432 dbname={POSTGRES_DB} user={POSTGRES_USER} password={POSTGRES_PASSWORD}'
+    as beamer_lake
+    (data_path 's3://{MINIO_BUCKET}/ducklake/');
 """)
 
-con.execute("USE beamer_lake;")
+con.execute("use beamer_lake;")
 
-con.execute("CREATE SCHEMA IF NOT EXISTS bronze;")
+con.execute("create schema if not exists bronze;")
 
 con.execute("""
-    CREATE TABLE IF NOT EXISTS bronze.offers (
+    create table if not exists bronze.offers (
         source VARCHAR,
         source_offer_id VARCHAR,
         brand VARCHAR,
@@ -55,7 +55,7 @@ con.execute("""
 """)
 
 con.execute("""
-    INSERT INTO bronze.offers VALUES
+    insert into bronze.offers values
     (
         'demo',
         'demo-001',
@@ -71,8 +71,8 @@ con.execute("""
 
 print(
     con.execute("""
-    SELECT *
-    FROM bronze.offers
-    ORDER BY scraped_at DESC
+    select *
+    from bronze.offers
+    order by scraped_at desc
 """).fetchdf()
 )

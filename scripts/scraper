@@ -1,0 +1,57 @@
+#!/bin/sh
+# Run the one-shot scraper against the local Apple Container services.
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ENV_FILE="$ROOT/.env"
+NETWORK=beamer
+DNS_DOMAIN=${CONTAINER_DNS_DOMAIN:-beamer}
+POSTGRES_CONTAINER="beamer-postgres.${DNS_DOMAIN}"
+MINIO_CONTAINER="beamer-minio.${DNS_DOMAIN}"
+CLICKHOUSE_CONTAINER="beamer-clickhouse.${DNS_DOMAIN}"
+SCRAPER_CONTAINER="beamer-scraper.${DNS_DOMAIN}"
+SCRAPER_IMAGE=beamer-scraper:local
+
+require() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "Missing required command: $1" >&2
+        exit 1
+    }
+}
+
+container_ip() {
+    container inspect "$1" | sed -n 's/.*"ipv4Address" : "\([0-9.]*\)\\\/.*$/\1/p' | head -n 1
+}
+
+require_running() {
+    container list | grep -q "^$1 " || {
+        echo "$1 is not running. Start the stack first with: ./scripts/container-up" >&2
+        exit 1
+    }
+}
+
+require container
+[ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE" >&2; exit 1; }
+
+require_running "$POSTGRES_CONTAINER"
+require_running "$MINIO_CONTAINER"
+require_running "$CLICKHOUSE_CONTAINER"
+
+POSTGRES_IP=$(container_ip "$POSTGRES_CONTAINER")
+MINIO_IP=$(container_ip "$MINIO_CONTAINER")
+CLICKHOUSE_IP=$(container_ip "$CLICKHOUSE_CONTAINER")
+[ -n "$POSTGRES_IP" ] || { echo "Could not determine PostgreSQL container IP" >&2; exit 1; }
+[ -n "$MINIO_IP" ] || { echo "Could not determine MinIO container IP" >&2; exit 1; }
+[ -n "$CLICKHOUSE_IP" ] || { echo "Could not determine ClickHouse container IP" >&2; exit 1; }
+
+container stop "$SCRAPER_CONTAINER" >/dev/null 2>&1 || true
+container delete "$SCRAPER_CONTAINER" >/dev/null 2>&1 || true
+
+container build --tag "$SCRAPER_IMAGE" --file "$ROOT/services/scraper/Dockerfile" "$ROOT/services/scraper"
+container run --rm --init --name "$SCRAPER_CONTAINER" --network "$NETWORK" --dns-domain "$DNS_DOMAIN" \
+    --env-file "$ENV_FILE" \
+    --env "POSTGRES_HOST=$POSTGRES_IP" \
+    --env "MINIO_ENDPOINT=${MINIO_IP}:9000" \
+    --env "CLICKHOUSE_HOST=$CLICKHOUSE_IP" \
+    --volume "$ROOT/services/scraper/src:/app/src" \
+    "$SCRAPER_IMAGE" python -m src.main

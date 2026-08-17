@@ -91,7 +91,7 @@ services:
             test:
                 [
                     "CMD-SHELL",
-                    "clickhouse-client --user $${CLICKHOUSE_USER} --password $${CLICKHOUSE_PASSWORD} --query 'SELECT 1'"
+                    "clickhouse-client --user $${CLICKHOUSE_USER} --password $${CLICKHOUSE_PASSWORD} --query 'select 1'"
                 ]
             interval: 5s
             timeout: 5s

@@ -37,7 +37,7 @@ container list | grep -q "^$CLICKHOUSE_CONTAINER " || {
 }
 
 if ! container exec "$CLICKHOUSE_CONTAINER" clickhouse-client \
-    --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --query "SELECT 1" >/dev/null 2>&1; then
+    --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --query "select 1" >/dev/null 2>&1; then
     echo "ClickHouse is not ready. Wait a moment and run the command again." >&2
     exit 1
 fi

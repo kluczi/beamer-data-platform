@@ -40,7 +40,7 @@ def load_scrape_run(conn: duckdb.DuckDBPyConnection, scrape_run_id: str) -> int:
 
     try:
         already_loaded = client.query(
-            f"SELECT count() FROM {loads_table} WHERE scrape_run_id = {{run_id:String}}",
+            f"select count() from {loads_table} where scrape_run_id = {{run_id:String}}",
             parameters={"run_id": scrape_run_id},
         ).result_rows[0][0]
         if already_loaded:
@@ -48,12 +48,12 @@ def load_scrape_run(conn: duckdb.DuckDBPyConnection, scrape_run_id: str) -> int:
 
         cursor = conn.execute(
             """
-            SELECT source_offer_id, url, title, brand, model, year, mileage_km,
+            select source_offer_id, url, title, brand, model, year, mileage_km,
                    fuel_type, transmission, price_amount, price_currency,
                    observed_at, scrape_run_id
-            FROM beamer_lake.raw.offers_observations
-            WHERE scrape_run_id = ?
-            ORDER BY source_offer_id
+            from beamer_lake.raw.offers_observations
+            where scrape_run_id = ?
+            order by source_offer_id
             """,
             [scrape_run_id],
         )
@@ -76,9 +76,9 @@ def load_scrape_run(conn: duckdb.DuckDBPyConnection, scrape_run_id: str) -> int:
 def load_pending_scrape_runs(conn: duckdb.DuckDBPyConnection) -> int:
     scrape_run_ids = conn.execute(
         """
-        SELECT DISTINCT scrape_run_id
-        FROM beamer_lake.raw.offers_observations
-        ORDER BY scrape_run_id
+        select distinct scrape_run_id
+        from beamer_lake.raw.offers_observations
+        order by scrape_run_id
         """
     ).fetchall()
 

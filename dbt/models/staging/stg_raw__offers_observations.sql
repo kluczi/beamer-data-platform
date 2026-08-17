@@ -1,4 +1,4 @@
-SELECT
+select
     source_offer_id,
     url,
     title,
@@ -12,4 +12,4 @@ SELECT
     price_currency,
     observed_at,
     scrape_run_id
-FROM {{ source('raw', 'offers_observations') }}
+from {{ source('raw', 'offers_observations') }}

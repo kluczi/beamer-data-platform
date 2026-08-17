@@ -3,11 +3,11 @@
     order_by='(offer_key, observed_at)'
 ) }}
 
-SELECT
-    source_offer_id AS offer_key,
+select
+    source_offer_id as offer_key,
     observed_at,
     price_amount,
     price_currency,
     mileage_km,
     scrape_run_id
-FROM {{ ref('stg_raw__offers_observations') }}
+from {{ ref('stg_raw__offers_observations') }}

@@ -3,10 +3,10 @@
     order_by='observation_date'
 ) }}
 
-SELECT
-    toDate(observed_at) AS observation_date,
-    count() AS observation_count,
-    uniqExact(offer_key) AS distinct_offer_count,
-    avg(price_amount) AS average_price_amount
-FROM {{ ref('fct__offer_observations') }}
-GROUP BY observation_date
+select
+    toDate(observed_at) as observation_date,
+    count() as observation_count,
+    uniqExact(offer_key) as distinct_offer_count,
+    avg(price_amount) as average_price_amount
+from {{ ref('fct__offer_observations') }}
+group by observation_date

@@ -108,7 +108,7 @@ container run --detach --init --memory 2GiB --name "$CLICKHOUSE_CONTAINER" --net
     --volume beamer-clickhouse-data:/var/lib/clickhouse \
     docker.io/clickhouse/clickhouse-server:latest
 wait_for "$CLICKHOUSE_CONTAINER" container exec "$CLICKHOUSE_CONTAINER" clickhouse-client \
-    --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --query "SELECT 1"
+    --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --query "select 1"
 CLICKHOUSE_IP=$(container_ip "$CLICKHOUSE_CONTAINER")
 [ -n "$CLICKHOUSE_IP" ] || { echo "Could not determine ClickHouse container IP" >&2; exit 1; }
 

@@ -1,93 +1,197 @@
 # Beamer Data Platform
 
+Beamer is a local data platform for collecting vehicle marketplace offers,
+retaining their history, and building analytics-ready ClickHouse models. A
+Python scraper discovers listings, stores each observed offer state in
+DuckLake, and copies previously unloaded scrape runs into ClickHouse. dbt builds
+the reporting layer, which will be served in Evidence. Airflow DAGs will
+orchestrate the end-to-end pipeline.
+
+## Architecture
+
+```text
+                       Airflow DAGs (planned)
+                  orchestrate the full pipeline
+                               |
+                               v
+Marketplace API -> Python ingestion -> DuckLake -> ClickHouse raw
+                                          |              |
+                              +-----------+              v
+                              |                 dbt transformations
+                              v                          |
+                   +----------+----------+               v
+                   |                     |       staging models
+                   v                     v               |
+             PostgreSQL                MinIO             v
+             catalog metadata          data files   dimensions/facts
+                                                         |
+                                                         v
+                                                    aggregations
+                                                         |
+                                                         v
+                                                       marts
+                                                         |
+                                                         v
+                                                 Evidence (planned)
+```
+
+The storage layers have separate responsibilities:
+
+- PostgreSQL is the DuckLake catalog. It holds table and snapshot metadata,
+  rather than the offer data queried by analysts.
+- MinIO holds the DuckLake data files under the configured bucket.
+- ClickHouse is the serving warehouse. The scraper creates and fills the raw
+  tables, while dbt creates staging views and analytics tables.
+
+Airflow and Evidence are the planned orchestration and presentation layers.
+They are shown here as the target architecture but are not implemented in this
+repository yet.
+
+Each scraper invocation uses a UUID `scrape_run_id`. The DuckLake table is
+append-only at the application level, so repeated observations retain price and
+mileage history. Before copying a run to ClickHouse, the loader checks
+`warehouse_loads`; this makes warehouse loading idempotent per scrape run.
+
+### Pipeline flow
+
+1. The scraper calls the configured marketplace GraphQL endpoint to discover
+   offer URLs.
+2. It fetches each offer page and maps its `__NEXT_DATA__` payload to an offer
+   observation.
+3. Observations are appended in batches to
+   `beamer_lake.raw.offers_observations`. PostgreSQL tracks the DuckLake catalog
+   and MinIO stores its data files.
+4. Any scrape run absent from ClickHouse's `warehouse_loads` table is copied to
+   `beamer_warehouse.raw_offers_observations`.
+5. dbt transforms the raw table through staging, dimensions and facts,
+   aggregations, and final marts.
+6. Evidence reads the marts to publish analytics pages and dashboards.
+
+Airflow DAGs will schedule and monitor these steps as a single dependency
+graph.
+
+### dbt model graph
+
+```text
+raw_offers_observations (ClickHouse source)
+└── stg_raw__offers_observations
+    ├── dim__offers
+    │   ├── agg__offers_by_brand
+    │   └── agg__offers_by_fuel_type
+    └── fct__offer_observations
+        └── agg__daily_offer_observations
+```
+
+`dim__offers` contains the latest descriptive state for each offer and its
+first/last observation timestamps. `fct__offer_observations` retains one row per
+observed offer state. The aggregate models provide daily activity and current
+inventory breakdowns. SQL keywords use lowercase consistently in both dbt
+models and embedded application queries.
+
+## Repository layout
+
+```text
+dbt/                     ClickHouse sources, staging models, marts, and tests
+services/scraper/        Marketplace ingestion and DuckLake-to-ClickHouse load
+scripts/container-up     Start the stack with Apple Container
+scripts/container-down   Stop containers while retaining volumes
+scripts/scraper          Run the one-shot scraper against the local services
+scripts/dbt              Run dbt in a local container
+compose.apple.yml        container-compose definition for Apple Container
+docker-compose.yml       Docker Compose definition
+```
+
+## Configuration
+
+Create a `.env` file in the repository root. The services expect these values:
+
+| Area | Variables |
+| --- | --- |
+| PostgreSQL | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` |
+| MinIO | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET` |
+| ClickHouse | `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, optionally `CLICKHOUSE_DB` |
+| Marketplace | `GRAPHQL_URL`, `REFERER_URL`, `SITECODE` |
+| Access protection | optionally `DATADOME_CLIENT_ID`, `DATADOME_COOKIE` |
+| Alerts | `DISCORD_WEBHOOK_URL` |
+
+Do not commit `.env`; it contains credentials and access tokens.
+
 ## Run with Apple Container
 
-This project can run without Docker Desktop using Apple's `container` CLI on an
-Apple-silicon Mac running macOS 26 or newer. The existing Dockerfile remains
-valid because Apple Container builds and runs OCI images; only Compose has been
-replaced with the two scripts below.
+The primary local workflow uses Apple's `container` CLI on an Apple-silicon Mac
+running macOS 26 or newer.
 
-1. Install Apple Container from the [official release page](https://github.com/apple/container/releases).
-2. Keep the project's `.env` file populated with the PostgreSQL, MinIO, and
-   ClickHouse credentials.
-3. Start the stack:
+1. Install Apple Container from the
+   [official releases](https://github.com/apple/container/releases).
+2. Populate `.env` with the configuration above.
+3. Start the infrastructure and one-shot scraper:
 
    ```sh
    ./scripts/container-up
    ```
 
-4. Watch the one-shot scraper pipeline:
+4. Follow the pipeline:
 
    ```sh
-   container logs --follow beamer-scraper
+   container logs --follow beamer-scraper.beamer
    ```
 
-Service ports remain available only on localhost: PostgreSQL `5432`, MinIO API
-`9000`, MinIO Console `9001`, ClickHouse HTTP `8123`, ClickHouse native
-`9002`, and CH-UI `3488`.
+To rerun the one-shot scraper in the foreground after the stack is running:
 
-Open [CH-UI](http://localhost:3488) to browse and query ClickHouse. On first
-use, sign in with the `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD` values from
-`.env`. Its workspace state is persisted in the `beamer-ch-ui-data` volume.
+```sh
+./scripts/scraper
+```
 
-The scraper first writes immutable offer observations to DuckLake in MinIO. It
-then loads every DuckLake scrape run not yet recorded in ClickHouse into
-`beamer_warehouse.raw_offers_observations`, which is the table to use
-from CH-UI.
+The command rebuilds the local scraper image, replaces any previous scraper
+container, and streams the run output directly to the terminal. Every scraper
+execution sends a Discord alert when it succeeds or fails.
 
-## dbt transformations
+The services bind only to localhost:
 
-dbt models live in `dbt/` and run in a local container against the
-ClickHouse warehouse. After starting the stack, validate the connection and
-build the models with:
+| Service | Address |
+| --- | --- |
+| PostgreSQL | `localhost:5432` |
+| MinIO API | `http://localhost:9000` |
+| MinIO Console | `http://localhost:9001` |
+| ClickHouse HTTP | `http://localhost:8123` |
+| ClickHouse native | `localhost:9002` |
+
+### Build and test dbt models
+
+Once ClickHouse and the scraper have completed successfully, run:
 
 ```sh
 ./scripts/dbt debug
 ./scripts/dbt build
 ```
 
-The starter star schema includes `beamer_warehouse.dim__offers` (one row per
-offer) and `beamer_warehouse.fct__offer_observations` (one row per observed
-offer state). Use `./scripts/dbt test` to run source and model tests.
+`dbt build` materializes the models and runs their configured tests. To run
+only the tests, use `./scripts/dbt test`.
 
-## Discord alert test
-
-Set `DISCORD_WEBHOOK_URL` in `.env`, then send the Discord service's test
-message without starting it as part of the default stack:
-
-```sh
-./scripts/discord-alert
-```
-
-To stop the stack while retaining all database/object-store data:
+### Stop the stack
 
 ```sh
 ./scripts/container-down
 ```
 
-Data lives in Apple Container volumes named `beamer-postgres-data`,
-`beamer-minio-data`, and `beamer-clickhouse-data`. The down script deliberately
-does not remove them.
+The command removes project containers and the network but retains data in the
+`beamer-postgres-data`, `beamer-minio-data`, and `beamer-clickhouse-data`
+volumes.
 
-## Compose-style workflow
+## Alternative orchestration
 
-`container-compose` is installed on this Mac. It provides limited Compose
-orchestration over Apple's `container` CLI; use the Apple-specific file rather
-than `docker-compose.yml`:
-
-```sh
-container-compose --file compose.apple.yml up --build --detach
-container logs --follow beamer-scraper
-container-compose --file compose.apple.yml down
-```
-
-The adapter creates the network and volumes and waits for the declared
-dependencies. Register the project DNS domain once before the first run:
+If `container-compose` is installed, use the Apple-specific Compose file:
 
 ```sh
 sudo container system dns create beamer
+container-compose --file compose.apple.yml up --build --detach
+container logs --follow beamer-scraper.beamer
+container-compose --file compose.apple.yml down
 ```
 
-The Apple Compose file uses the resulting generated service names, such as
-`postgres.beamer` and `minio.beamer`, for reliable inter-container
-connectivity.
+The DNS domain only needs to be registered once. The Compose file uses generated
+service names such as `postgres.beamer`, `minio.beamer`, and
+`clickhouse.beamer` for inter-container connectivity.
+
+For a conventional Docker engine, `docker-compose.yml` describes the equivalent
+development services and named volumes.

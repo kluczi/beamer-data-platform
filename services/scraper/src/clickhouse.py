@@ -13,10 +13,10 @@ def initialize_warehouse() -> None:
     )
 
     try:
-        conn.command(f"CREATE DATABASE IF NOT EXISTS {database}")
+        conn.command(f"create database if not exists {database}")
         conn.command(
             f"""
-            CREATE TABLE IF NOT EXISTS {database}.raw_offers_observations (
+            create table if not exists {database}.raw_offers_observations (
                         source_offer_id String,
                         url String,
                         title String,
@@ -31,20 +31,20 @@ def initialize_warehouse() -> None:
                         observed_at DateTime64(3, 'UTC'),
                         scrape_run_id String
                     )
-            ENGINE = MergeTree
-            PARTITION BY toYYYYMM(observed_at)
-            ORDER BY (source_offer_id, observed_at)
+            engine = MergeTree
+            partition by toYYYYMM(observed_at)
+            order by (source_offer_id, observed_at)
             """
         )
         conn.command(
             f"""
-            CREATE TABLE IF NOT EXISTS {database}.warehouse_loads (
+            create table if not exists {database}.warehouse_loads (
                 scrape_run_id String,
                 loaded_at DateTime64(3, 'UTC'),
                 rows_loaded UInt64
             )
-            ENGINE = ReplacingMergeTree
-            ORDER BY scrape_run_id
+            engine = ReplacingMergeTree
+            order by scrape_run_id
             """
         )
     finally:
