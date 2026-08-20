@@ -4,7 +4,7 @@
 ) }}
 
 select
-    ifNull(fuel_type, 'unknown') as fuel_type,
+    coalesce(fuel_type, 'unknown') as fuel_type,
     count() as offer_count
 from {{ ref('dim__offers') }}
 group by fuel_type
