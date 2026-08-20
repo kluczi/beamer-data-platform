@@ -18,3 +18,27 @@ sources:
                       [
                           not_null
                       ]
+          - name: currency_rates
+            identifier: raw_currency_rates
+            description: Daily average foreign exchange rates published by NBP.
+            columns:
+                - name: effective_date
+                  tests:
+                      [
+                          not_null
+                      ]
+                - name: base_currency
+                  tests:
+                      [
+                          not_null
+                      ]
+                - name: quote_currency
+                  tests:
+                      [
+                          not_null
+                      ]
+                - name: rate_to_pln
+                  tests:
+                      [
+                          not_null
+                      ]
