@@ -1,0 +1,40 @@
+version: 2
+
+models:
+    - name: stg__currency_rates
+      description: Latest loaded NBP rate for each effective date and currency pair.
+      columns:
+          - name: effective_date
+            description: Date on which NBP published the rate.
+            tests:
+                - not_null
+          - name: base_currency
+            description: Currency being converted to PLN.
+            tests:
+                - not_null
+                - accepted_values:
+                      arguments:
+                          values: [EUR, USD]
+          - name: quote_currency
+            description: Target currency; currently always PLN.
+            tests:
+                - not_null
+                - accepted_values:
+                      arguments:
+                          values: [PLN]
+          - name: rate_to_pln
+            description: PLN value of one unit of the base currency.
+            tests:
+                - not_null
+          - name: provider
+            description: Exchange-rate publisher, currently NBP.
+            tests:
+                - not_null
+          - name: source_table
+            description: NBP exchange-rate table identifier.
+            tests:
+                - not_null
+          - name: fetched_at
+            description: UTC timestamp when the API response was loaded.
+            tests:
+                - not_null

@@ -1,0 +1,20 @@
+{
+  "[sql]": {
+    "editor.defaultFormatter": "sqlfluff.vscode-sqlfluff",
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file"
+  },
+  "[jinja-sql]": {
+    "editor.defaultFormatter": "sqlfluff.vscode-sqlfluff",
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file"
+  },
+  "sqlfluff.config": "${workspaceFolder}/.sqlfluff",
+  "sqlfluff.executablePath": "sqlfluff",
+  "sqlfluff.format.enabled": true,
+  "sqlfluff.ignoreLocalConfig": false,
+  "sqlfluff.ignoreParsing": false,
+  "sqlfluff.linter.lintEntireProject": false,
+  "sqlfluff.linter.run": "onSave",
+  "sqlfluff.workingDirectory": "${workspaceFolder}"
+}
