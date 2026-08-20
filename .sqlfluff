@@ -1,0 +1,15 @@
+[sqlfluff]
+dialect = clickhouse
+templater = jinja
+max_line_length = 100
+exclude_rules = capitalisation.functions
+
+[sqlfluff:indentation]
+tab_space_size = 4
+indented_joins = False
+
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = True
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
