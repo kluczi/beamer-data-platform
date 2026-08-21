@@ -45,6 +45,7 @@ services:
 
   clickhouse:
     image: docker.io/clickhouse/clickhouse-server:latest
+    mem_limit: 4g
     environment:
       # Container-Compose does not expand Compose's ${VAR:-default} form here.
       CLICKHOUSE_DB: beamer_warehouse

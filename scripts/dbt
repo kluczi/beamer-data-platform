@@ -6,7 +6,6 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ENV_FILE="$ROOT/.env"
 NETWORK=beamer
 DNS_DOMAIN=${CONTAINER_DNS_DOMAIN:-beamer}
-CLICKHOUSE_CONTAINER="beamer-clickhouse.${DNS_DOMAIN}"
 DBT_IMAGE=beamer-dbt:local
 
 require() {
@@ -20,6 +19,23 @@ container_ip() {
     container inspect "$1" | sed -n 's/.*"ipv4Address" : "\([0-9.]*\)\\\/.*$/\1/p' | head -n 1
 }
 
+find_clickhouse_container() {
+    for candidate in \
+        "${DBT_CLICKHOUSE_CONTAINER:-}" \
+        "beamer-clickhouse.${DNS_DOMAIN}" \
+        "clickhouse.${DNS_DOMAIN}" \
+        beamer-clickhouse \
+        clickhouse; do
+        [ -n "$candidate" ] || continue
+        if container list | awk 'NR > 1 { print $1 }' | grep -Fxq "$candidate"; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 require container
 [ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE" >&2; exit 1; }
 
@@ -31,7 +47,7 @@ set +a
 : "${CLICKHOUSE_USER:?CLICKHOUSE_USER must be set in .env}"
 : "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set in .env}"
 
-container list | grep -q "^$CLICKHOUSE_CONTAINER " || {
+CLICKHOUSE_CONTAINER=$(find_clickhouse_container) || {
     echo "ClickHouse container is not running. Start the stack first with: ./scripts/container-up" >&2
     exit 1
 }

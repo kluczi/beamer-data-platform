@@ -8,8 +8,8 @@ models:
             description: Date on which NBP published the rate.
             tests:
                 - not_null
-          - name: base_currency
-            description: Currency being converted to PLN.
+          - name: price_currency
+            description: Currency of the source price being converted to PLN.
             tests:
                 - not_null
                 - accepted_values:
