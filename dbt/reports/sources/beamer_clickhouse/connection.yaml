@@ -1,0 +1,9 @@
+# This file was automatically generated
+type: clickhouse
+name: beamer_clickhouse
+options:
+  url: http://127.0.0.1:8123/beamer_warehouse
+  username: beamer
+# Advanced Options, you probably don't want to change this
+buildOptions:
+  batchSize: 1000000

@@ -43,9 +43,9 @@ The storage layers have separate responsibilities:
 - ClickHouse is the serving warehouse. The scraper creates and fills the raw
   tables, while dbt creates staging views and analytics tables.
 
-Airflow and Evidence are the planned orchestration and presentation layers.
-They are shown here as the target architecture but are not implemented in this
-repository yet.
+Airflow and the ClickHouse-to-Evidence connection are planned orchestration and
+presentation layers. Evidence itself is installed in `dbt/reports`, but it is
+not connected to the warehouse yet.
 
 Each scraper invocation uses a UUID `scrape_run_id`. The DuckLake table is
 append-only at the application level, so repeated observations retain price and
@@ -167,6 +167,23 @@ Once ClickHouse and the scraper have completed successfully, run:
 
 `dbt build` materializes the models and runs their configured tests. To run
 only the tests, use `./scripts/dbt test`.
+
+### Run Evidence locally
+
+Evidence is installed in `dbt/reports` as a separate reporting project inside
+the dbt directory. Build its template source and start the development server
+with:
+
+```sh
+cd dbt
+npm --prefix ./reports install
+npm --prefix ./reports run sources
+npm --prefix ./reports run dev -- --host 127.0.0.1 --port 3005
+```
+
+Open [http://127.0.0.1:3005](http://127.0.0.1:3005). Port 3005 avoids the
+existing local service on port 3000. No ClickHouse connection is configured
+yet.
 
 ### Stop the stack
 
