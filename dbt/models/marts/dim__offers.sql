@@ -18,14 +18,16 @@ with ranked_offer_observations as (
             partition by source_offer_id
             order by observed_at desc
         ) as observation_rank
-    from {{ ref('stg_raw__offers_observations') }}
-), offer_history as (
+    from {{ ref('int__exchange_rates') }}
+),
+
+offer_history as (
     select
         source_offer_id,
         min(observed_at) as first_observed_at,
         max(observed_at) as last_observed_at,
         count() as observation_count
-    from {{ ref('stg_raw__offers_observations') }}
+    from {{ ref('int__exchange_rates') }}
     group by source_offer_id
 )
 
@@ -42,6 +44,6 @@ select
     offer_history.last_observed_at,
     offer_history.observation_count
 from ranked_offer_observations
-join offer_history
+inner join offer_history
     on ranked_offer_observations.source_offer_id = offer_history.source_offer_id
 where ranked_offer_observations.observation_rank = 1
