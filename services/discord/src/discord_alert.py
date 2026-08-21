@@ -1,17 +1,57 @@
 import os
+import time
+
 import httpx
+from clickhouse_driver import Client
 
-from datetime import datetime, timezone
 
-
-def format_new_offer_message(row: dict) -> str:
-    return (
-        f"new offer arrived!\n"
-        f"{row['title']}\n"
-        f"{row['brand']} {row['model']} | {row['year']} | {row['mileage_km']} km\n"
-        f"price: {row['price_amount']} {row['price_currency']}\n"
-        f"{row['url']}"
+def get_latest_offers() -> list[dict]:
+    client = Client(
+        host=os.getenv("CLICKHOUSE_HOST", "clickhouse"),
+        port=int(os.getenv("CLICKHOUSE_NATIVE_PORT", "9000")),
+        user=os.environ["CLICKHOUSE_USER"],
+        password=os.environ["CLICKHOUSE_PASSWORD"],
+        database=os.getenv("CLICKHOUSE_DB", "beamer_warehouse"),
+        connect_timeout=10,
+        send_receive_timeout=30,
     )
+    try:
+        rows, columns = client.execute(
+            """
+            SELECT title, brand, model, year, mileage_km, price_amount,
+                   price_currency, url, observed_at
+            FROM raw_offers_observations
+            ORDER BY observed_at DESC
+            LIMIT 10
+            """,
+            with_column_types=True,
+        )
+        return [dict(zip((column[0] for column in columns), row)) for row in rows]
+    finally:
+        client.disconnect()
+
+
+def format_latest_offers_message(rows: list[dict]) -> str:
+    if not rows:
+        return "No offers have been observed yet."
+
+    offers = ["Top 10 latest offers"]
+    for index, row in enumerate(rows, start=1):
+        vehicle = " ".join(
+            str(value) for value in (row["brand"], row["model"], row["year"])
+            if value is not None
+        )
+        price = " ".join(
+            str(value) for value in (row["price_amount"], row["price_currency"])
+            if value is not None
+        )
+        mileage = f" | {row['mileage_km']} km" if row["mileage_km"] is not None else ""
+        offer = f"{index}. {row['title']} — {vehicle}{mileage} | {price}\n{row['url']}"
+        if len("\n".join([*offers, offer])) > 2000:
+            break
+        offers.append(offer)
+
+    return "\n".join(offers)
 
 
 def send_discord_webhook(content: str) -> None:
@@ -28,19 +68,20 @@ def send_discord_webhook(content: str) -> None:
 
 
 def main():
-    row = {
-        "title": "Porsche 911",
-        "brand": "Porsche",
-        "model": "911",
-        "year": "2024",
-        "mileage_km": "50000",
-        "price_amount": "5000000",
-        "price_currency": "EUR",
-        "url": "test",
-    }
-
-    message = format_new_offer_message(row)
-    send_discord_webhook(message)
+    interval_seconds = int(os.getenv("DISCORD_ALERT_INTERVAL_SECONDS", "86400"))
+    retry_seconds = int(os.getenv("DISCORD_ALERT_RETRY_SECONDS", "60"))
+    run_once = os.getenv("DISCORD_ALERT_RUN_ONCE", "").lower() in {"1", "true", "yes"}
+    while True:
+        try:
+            send_discord_webhook(format_latest_offers_message(get_latest_offers()))
+        except Exception:
+            if run_once:
+                raise
+            time.sleep(retry_seconds)
+        else:
+            if run_once:
+                return
+            time.sleep(interval_seconds)
 
 
 if __name__ == "__main__":
