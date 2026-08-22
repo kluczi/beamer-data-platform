@@ -21,10 +21,16 @@ models:
             description: Current vehicle model supplied by the source.
           - name: year
             description: Current model year supplied by the source.
+          - name: mileage_km
+            description: Mileage from the latest observed offer state, in kilometres.
           - name: fuel_type
             description: Current fuel type supplied by the source.
           - name: transmission
             description: Current transmission type supplied by the source.
+          - name: price_amount
+            description: Price from the latest observed offer state, normalized when an exchange rate is available.
+          - name: price_currency
+            description: Currency of price_amount after exchange-rate normalization.
           - name: first_observed_at
             description: Timestamp of the first recorded observation.
             tests:
