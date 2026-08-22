@@ -1,0 +1,19 @@
+version: 2
+
+models:
+    - name: rpt__mileage_vs_price
+      description: Latest offer state prepared for mileage-versus-price scatter plots.
+      columns:
+          - name: offer_key
+            tests:
+                - not_null
+                - unique
+          - name: mileage_km
+            tests:
+                - not_null
+          - name: price_amount
+            tests:
+                - not_null
+          - name: price_currency
+            tests:
+                - not_null

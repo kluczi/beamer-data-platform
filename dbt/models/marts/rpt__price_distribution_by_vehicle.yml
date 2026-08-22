@@ -1,0 +1,30 @@
+version: 2
+
+models:
+    - name: rpt__price_distribution_by_vehicle
+      description: Current offer-price distribution grouped by brand, model, year, and currency.
+      columns:
+          - name: brand
+            tests:
+                - not_null
+          - name: vehicle_model
+            tests:
+                - not_null
+          - name: model_year
+            tests:
+                - not_null
+          - name: price_currency
+            tests:
+                - not_null
+          - name: offer_count
+            tests:
+                - not_null
+          - name: minimum_price_amount
+            tests:
+                - not_null
+          - name: median_price_amount
+            tests:
+                - not_null
+          - name: maximum_price_amount
+            tests:
+                - not_null

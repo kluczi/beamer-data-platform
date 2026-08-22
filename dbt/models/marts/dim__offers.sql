@@ -11,8 +11,11 @@ with ranked_offer_observations as (
         brand,
         model,
         year,
+        mileage_km,
         fuel_type,
         transmission,
+        price_amount,
+        price_currency,
         observed_at,
         row_number() over (
             partition by source_offer_id
@@ -38,8 +41,11 @@ select
     ranked_offer_observations.brand,
     ranked_offer_observations.model,
     ranked_offer_observations.year,
+    ranked_offer_observations.mileage_km,
     ranked_offer_observations.fuel_type,
     ranked_offer_observations.transmission,
+    ranked_offer_observations.price_amount,
+    ranked_offer_observations.price_currency,
     offer_history.first_observed_at,
     offer_history.last_observed_at,
     offer_history.observation_count
