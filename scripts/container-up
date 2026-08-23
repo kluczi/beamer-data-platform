@@ -12,6 +12,7 @@ CLICKHOUSE_CONTAINER="beamer-clickhouse.${DNS_DOMAIN}"
 CH_UI_CONTAINER="beamer-ch-ui.${DNS_DOMAIN}"
 DUCKDB_CONTAINER="beamer-duckdb.${DNS_DOMAIN}"
 SCRAPER_CONTAINER="beamer-scraper.${DNS_DOMAIN}"
+AIRFLOW_CONTAINER="beamer-airflow.${DNS_DOMAIN}"
 
 require() {
     command -v "$1" >/dev/null 2>&1 || {
@@ -58,6 +59,8 @@ set +a
 : "${MINIO_BUCKET:?MINIO_BUCKET must be set in .env}"
 : "${CLICKHOUSE_USER:?CLICKHOUSE_USER must be set in .env}"
 : "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set in .env}"
+: "${AIRFLOW_ADMIN_USERNAME:?AIRFLOW_ADMIN_USERNAME must be set in .env}"
+: "${AIRFLOW_ADMIN_PASSWORD:?AIRFLOW_ADMIN_PASSWORD must be set in .env}"
 CLICKHOUSE_DB=${CLICKHOUSE_DB:-beamer_warehouse}
 
 container system start
@@ -71,6 +74,8 @@ remove_container beamer-ch-ui
 remove_container beamer-clickhouse
 remove_container beamer-minio
 remove_container beamer-postgres
+remove_container beamer-airflow
+remove_container "$AIRFLOW_CONTAINER"
 remove_container "$SCRAPER_CONTAINER"
 remove_container "$DUCKDB_CONTAINER"
 remove_container "$CH_UI_CONTAINER"
@@ -133,5 +138,22 @@ container run --detach --init --name "$SCRAPER_CONTAINER" --network "$NETWORK" -
     --volume "$ROOT/services/scraper/src:/app/src" \
     beamer-scraper:local python -m src.main
 
+container run --detach --init --user 0 --name "$AIRFLOW_CONTAINER" --network "$NETWORK" --dns-domain "$DNS_DOMAIN" \
+    --env-file "$ENV_FILE" \
+    --publish 127.0.0.1:8080:8080 \
+    --env AIRFLOW__CORE__LOAD_EXAMPLES=False \
+    --env AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True \
+    --env AIRFLOW__CORE__PARALLELISM=4 \
+    --env "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS=${AIRFLOW_ADMIN_USERNAME}:admin" \
+    --volume beamer-airflow-data:/opt/airflow \
+    --volume "$ROOT/orchestration/airflow/dags:/opt/airflow/dags" \
+    docker.io/apache/airflow:3.3.1-python3.12 bash -ec \
+    'chown 50000:0 /opt/airflow;
+     python -c '\''import json, os; json.dump({os.environ["AIRFLOW_ADMIN_USERNAME"]: os.environ["AIRFLOW_ADMIN_PASSWORD"]}, open("/opt/airflow/simple_auth_manager_passwords.json.generated", "w"))'\'';
+     chown 50000:0 /opt/airflow/simple_auth_manager_passwords.json.generated;
+     chmod 600 /opt/airflow/simple_auth_manager_passwords.json.generated;
+     exec runuser -u airflow -- airflow standalone'
+
 echo "Stack is running. CH-UI is available at: http://localhost:3488"
+echo "Airflow is available at: http://localhost:8080"
 echo "Follow the pipeline with: container logs --follow $SCRAPER_CONTAINER"
