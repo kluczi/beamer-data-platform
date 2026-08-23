@@ -3,6 +3,7 @@ from time import monotonic
 
 from src.load_into_datalake import get_connection, main as load_into_datalake
 from src.clickhouse import initialize_warehouse
+from src.currency_rates import load_currency_rates
 from src.load_into_warehouse import load_pending_scrape_runs
 from src.notifications import notify_scraper_failed, notify_scraper_succeeded
 
@@ -11,6 +12,7 @@ def main():
     started_at = monotonic()
     try:
         initialize_warehouse()
+        load_currency_rates()
         scrape_run_id = load_into_datalake()
         conn = get_connection()
         try:

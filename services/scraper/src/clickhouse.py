@@ -47,5 +47,21 @@ def initialize_warehouse() -> None:
             order by scrape_run_id
             """
         )
+        conn.command(
+            f"""
+            create table if not exists {database}.raw_currency_rates (
+                effective_date Date,
+                base_currency LowCardinality(String),
+                quote_currency LowCardinality(String),
+                rate_to_pln Decimal64(8),
+                provider LowCardinality(String),
+                source_table String,
+                fetched_at DateTime64(3, 'UTC')
+            )
+            engine = ReplacingMergeTree(fetched_at)
+            partition by toYYYYMM(effective_date)
+            order by (effective_date, base_currency, quote_currency, provider)
+            """
+        )
     finally:
         conn.close()
