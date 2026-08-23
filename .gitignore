@@ -214,6 +214,16 @@ tempCodeRunnerFile.py
 # Ruff stuff:
 .ruff_cache/
 
+# Airflow local state (DAG definitions remain tracked)
+orchestration/airflow/logs/
+orchestration/airflow/airflow.cfg
+orchestration/airflow/*.db
+orchestration/airflow/simple_auth_manager_passwords.json.generated
+
+# Local source-specific runner scripts
+scripts/mercedes-gle-scraper
+scripts/porsche-911-scraper
+
 # PyPI configuration file
 .pypirc
 
