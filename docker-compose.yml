@@ -141,8 +141,35 @@ services:
         profiles:
             - alerts
 
+    airflow:
+        image: apache/airflow:3.3.1-python3.12
+        container_name: beamer_airflow
+        user: "0:0"
+        env_file:
+            - .env
+        command:
+            - bash
+            - -ec
+            - >-
+              chown 50000:0 /opt/airflow;
+              python -c 'import json, os; json.dump({os.environ["AIRFLOW_ADMIN_USERNAME"]: os.environ["AIRFLOW_ADMIN_PASSWORD"]}, open("/opt/airflow/simple_auth_manager_passwords.json.generated", "w"))';
+              chown 50000:0 /opt/airflow/simple_auth_manager_passwords.json.generated;
+              chmod 600 /opt/airflow/simple_auth_manager_passwords.json.generated;
+              exec runuser -u airflow -- airflow standalone
+        environment:
+            AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+            AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+            AIRFLOW__CORE__PARALLELISM: "4"
+            AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "${AIRFLOW_ADMIN_USERNAME}:admin"
+        ports:
+            - "127.0.0.1:8080:8080"
+        volumes:
+            - airflow_data:/opt/airflow
+            - ./orchestration/airflow/dags:/opt/airflow/dags
+
 volumes:
     postgres_data:
     minio_data:
     clickhouse_data:
     ch_ui_data:
+    airflow_data:

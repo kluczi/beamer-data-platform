@@ -4,9 +4,12 @@ set -eu
 
 DNS_DOMAIN=${CONTAINER_DNS_DOMAIN:-beamer}
 
-for name in beamer-scraper beamer-duckdb beamer-ch-ui beamer-clickhouse beamer-minio beamer-postgres \
+for name in beamer-scraper beamer-duckdb beamer-ch-ui beamer-clickhouse beamer-minio beamer-postgres beamer-airflow \
+    beamer-porsche-911-scraper beamer-mercedes-gle-scraper \
     "beamer-scraper.${DNS_DOMAIN}" "beamer-duckdb.${DNS_DOMAIN}" "beamer-ch-ui.${DNS_DOMAIN}" \
-    "beamer-clickhouse.${DNS_DOMAIN}" "beamer-minio.${DNS_DOMAIN}" "beamer-postgres.${DNS_DOMAIN}"; do
+    "beamer-porsche-911-scraper.${DNS_DOMAIN}" "beamer-mercedes-gle-scraper.${DNS_DOMAIN}" \
+    "beamer-clickhouse.${DNS_DOMAIN}" "beamer-minio.${DNS_DOMAIN}" "beamer-postgres.${DNS_DOMAIN}" \
+    "beamer-airflow.${DNS_DOMAIN}"; do
     container stop "$name" >/dev/null 2>&1 || true
     container delete "$name" >/dev/null 2>&1 || true
 done
