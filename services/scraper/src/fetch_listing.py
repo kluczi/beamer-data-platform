@@ -13,11 +13,52 @@ EXTENSIONS = {
 URL = os.getenv("GRAPHQL_URL")
 
 
-def build_variables(page: int = 1) -> dict:
+def get_make_model_generations() -> list[str]:
+    configured_targets = os.getenv(
+        "SCRAPE_TARGETS",
+        "porsche:911",
+    )
+    targets = []
+
+    for configured_target in configured_targets.split(","):
+        configured_target = configured_target.strip()
+        if not configured_target:
+            continue
+
+        try:
+            make, model = configured_target.split(":", maxsplit=1)
+        except ValueError as error:
+            raise ValueError(
+                "Each SCRAPE_TARGETS entry must use make:model format"
+            ) from error
+
+        if not make or not model:
+            raise ValueError(
+                "Each SCRAPE_TARGETS entry must include both make and model"
+            )
+
+        targets.append(f"{make}|{model}")
+
+    if not targets:
+        raise ValueError("SCRAPE_TARGETS must contain at least one target")
+
+    return targets
+
+
+def build_variables(
+    page: int = 1,
+    make_model_generation: str | None = None,
+) -> dict:
+    if make_model_generation is None:
+        make_model_generation = get_make_model_generations()[0]
+
     return {
         "filters": [
             {"name": "category_id", "value": "29"},
-            {"name": "make_model_generation", "value": "porsche|911"},
+            {
+                "name": "make_model_generation",
+                "value": make_model_generation,
+            },
             {"name": "filter_enum_leasing_concession", "value": "1"},
         ],
         "includeCepik": False,
@@ -35,7 +76,10 @@ def build_variables(page: int = 1) -> dict:
     }
 
 
-def fetch_listing_page(page: int = 1) -> dict:
+def fetch_listing_page(
+    page: int = 1,
+    make_model_generation: str | None = None,
+) -> dict:
     datadome_client_id = os.environ.get("DATADOME_CLIENT_ID")
     datadome_cookie = os.environ.get("DATADOME_COOKIE")
 
@@ -59,7 +103,9 @@ def fetch_listing_page(page: int = 1) -> dict:
     params = {
         "operationName": "financingListingScreen",
         "variables": json.dumps(
-            build_variables(page), separators=(",", ":"), ensure_ascii=False
+            build_variables(page, make_model_generation),
+            separators=(",", ":"),
+            ensure_ascii=False,
         ),
         "extensions": json.dumps(EXTENSIONS, separators=(",", ":"), ensure_ascii=False),
     }
@@ -117,12 +163,22 @@ def count_total_pages(data: dict) -> int:
 
 def scrape_listing_urls() -> list[str]:
     all_urls = []
-    data = fetch_listing_page(page=1)
-    total_pages = count_total_pages(data)
-    all_urls.extend(extract_offer_urls(data))
+    seen_urls = set()
 
-    for page in range(2, total_pages + 1):
-        data = fetch_listing_page(page)
-        curr_page_urls = extract_offer_urls(data)
-        all_urls.extend(curr_page_urls)
+    for target in get_make_model_generations():
+        data = fetch_listing_page(page=1, make_model_generation=target)
+        total_pages = count_total_pages(data)
+
+        for url in extract_offer_urls(data):
+            if url not in seen_urls:
+                seen_urls.add(url)
+                all_urls.append(url)
+
+        for page in range(2, total_pages + 1):
+            data = fetch_listing_page(page, make_model_generation=target)
+            for url in extract_offer_urls(data):
+                if url not in seen_urls:
+                    seen_urls.add(url)
+                    all_urls.append(url)
+
     return all_urls

@@ -1,6 +1,8 @@
 import os
+import sys
 import pandas as pd
 import duckdb
+import httpx
 from src.fetch_listing import scrape_listing_urls
 from src.fetch_offer import scrape_offer_from_listing
 from src.models import Offer
@@ -127,11 +129,23 @@ def scrape_and_load_offers(conn) -> str:
     batch = []
     urls = scrape_listing_urls()
     for idx, url in enumerate(urls):
-        offer = scrape_offer_from_listing(url, scrape_run_id)
+        try:
+            offer = scrape_offer_from_listing(url, scrape_run_id)
+        except (
+            httpx.HTTPError,
+            AttributeError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ) as error:
+            print(f"Skipping offer {url}: {error}", file=sys.stderr)
+            continue
+
         batch.append(offer)
         if len(batch) >= BATCH_SIZE:
             load_offers(conn, batch)
             batch.clear()
+
     if batch:
         load_offers(conn, batch)
     return scrape_run_id
