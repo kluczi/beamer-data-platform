@@ -76,34 +76,42 @@ warehouse results.
 ## Repository layout
 
 ```text
-dbt/                              dbt project and Evidence reporting project
-orchestration/airflow/            Airflow image and DAG definitions
-services/scraper/                 Marketplace ingestion and warehouse loading
-services/dbt/                     Python entry point for dbt builds
-services/evidence/                Python entry point for Evidence refreshes
-scripts/container-up              Build and start the Apple Container stack
-scripts/container-down            Stop the stack while retaining volumes
-scripts/build-airflow             Build the complete local Airflow image
-scripts/scraper                   Run marketplace ingestion independently
-scripts/dbt                       Run dbt independently
-compose.apple.yml                 Optional container-compose definition
-docker-compose.yml                Compatibility definition, not primary runtime
+.
+├── dbt/
+│   ├── models/                 ClickHouse staging, marts, and tests
+│   ├── reports/                Evidence dashboard and data sources
+│   ├── dbt_project.yml
+│   └── profiles.yml
+├── orchestration/
+│   └── airflow/                Airflow image and pipeline DAG
+├── services/
+│   ├── scraper/                Ingestion and warehouse loading
+│   ├── dbt/                    dbt task entry point
+│   ├── evidence/               Evidence refresh entry point
+│   └── discord/                Discord alert service
+├── scripts/                     Local build and run commands
+├── compose.apple.yml            Optional Apple compose definition
+├── docker-compose.yml           Compatibility compose definition
+└── .sqlfluff                    Shared SQL linting rules
 ```
 
 ## Configuration
 
 Create `.env` in the repository root. It is intentionally ignored by Git
-because it contains credentials and access tokens.
+because it contains credentials and access tokens. For the documented
+workflow, keep it limited to these keys:
 
-| Area | Variables |
+| Area | Used keys |
 | --- | --- |
 | PostgreSQL | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` |
 | MinIO | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET` |
-| ClickHouse | `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, optionally `CLICKHOUSE_DB` |
+| ClickHouse | `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD` |
 | Marketplace | `GRAPHQL_URL`, `REFERER_URL`, `SITECODE`, `SCRAPE_TARGETS` |
-| Access protection | optionally `DATADOME_CLIENT_ID`, `DATADOME_COOKIE` |
-| Alerts | `DISCORD_WEBHOOK_URL` |
+| Discord | `DISCORD_WEBHOOK_URL` |
 | Airflow | `AIRFLOW_ADMIN_USERNAME`, `AIRFLOW_ADMIN_PASSWORD` |
+
+Container hostnames, ports, and the ClickHouse database name are supplied by
+the project scripts and do not need to be added to `.env`.
 
 `SCRAPE_TARGETS` controls the vehicle filters. Multiple targets use a
 comma-separated `make:model` format:
