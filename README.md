@@ -150,9 +150,9 @@ Local endpoints:
 | Airflow | `localhost:8080` |
 | CH-UI | `localhost:3488` |
 | PostgreSQL | `localhost:5432` |
-| MinIO API | `http://localhost:9000` |
+| MinIO API | `localhost:9000` |
 | MinIO Console | `localhost:9001` |
-| ClickHouse HTTP | `http://localhost:8123` |
+| ClickHouse HTTP | `localhost:8123` |
 | ClickHouse native | `localhost:9002` |
 
 Airflow credentials come from `AIRFLOW_ADMIN_USERNAME` and
