@@ -153,6 +153,7 @@ services:
     volumes:
       - airflow_data:/opt/airflow
       - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./dbt/reports/.evidence:/opt/beamer/dbt/reports/.evidence
     depends_on:
       postgres:
         condition: service_started

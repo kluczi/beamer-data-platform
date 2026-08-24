@@ -68,6 +68,11 @@ Task code is imported from the Python service modules. The Airflow image also
 contains the Python ingestion dependencies, dbt Core, the ClickHouse adapter,
 Node.js, and the Evidence dependencies required by those tasks.
 
+Airflow and the host Evidence development server share
+`dbt/reports/.evidence`. A successful source-refresh task therefore updates the
+cache served at `localhost:3005`; reload the browser page to display the new
+warehouse results.
+
 ## Repository layout
 
 ```text

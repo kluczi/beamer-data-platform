@@ -139,6 +139,7 @@ container run --detach --init --name "$SCRAPER_CONTAINER" --network "$NETWORK" -
     beamer-scraper:local python -m src.main
 
 "$ROOT/scripts/build-airflow"
+mkdir -p "$ROOT/dbt/reports/.evidence"
 container run --detach --init --user 0 --memory 4g --name "$AIRFLOW_CONTAINER" --network "$NETWORK" --dns-domain "$DNS_DOMAIN" \
     --env-file "$ENV_FILE" \
     --publish 127.0.0.1:8080:8080 \
@@ -151,6 +152,7 @@ container run --detach --init --user 0 --memory 4g --name "$AIRFLOW_CONTAINER" -
     --env "CLICKHOUSE_HOST=$CLICKHOUSE_IP" \
     --volume beamer-airflow-data:/opt/airflow \
     --volume "$ROOT/orchestration/airflow/dags:/opt/airflow/dags" \
+    --volume "$ROOT/dbt/reports/.evidence:/opt/beamer/dbt/reports/.evidence" \
     beamer-airflow:local bash -ec \
     'chown 50000:0 /opt/airflow;
      python -c '\''import json, os; json.dump({os.environ["AIRFLOW_ADMIN_USERNAME"]: os.environ["AIRFLOW_ADMIN_PASSWORD"]}, open("/opt/airflow/simple_auth_manager_passwords.json.generated", "w"))'\'';
