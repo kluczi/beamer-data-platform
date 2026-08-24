@@ -153,6 +153,7 @@ container run --detach --init --user 0 --memory 4g --name "$AIRFLOW_CONTAINER" -
     --volume beamer-airflow-data:/opt/airflow \
     --volume "$ROOT/orchestration/airflow/dags:/opt/airflow/dags" \
     --volume "$ROOT/dbt/reports/.evidence:/opt/beamer/dbt/reports/.evidence" \
+    --volume "$ENV_FILE:/opt/beamer/.env" \
     beamer-airflow:local bash -ec \
     'chown 50000:0 /opt/airflow;
      python -c '\''import json, os; json.dump({os.environ["AIRFLOW_ADMIN_USERNAME"]: os.environ["AIRFLOW_ADMIN_PASSWORD"]}, open("/opt/airflow/simple_auth_manager_passwords.json.generated", "w"))'\'';

@@ -13,6 +13,7 @@ USER airflow
 
 RUN pip install --no-cache-dir \
     /opt/beamer/services/scraper \
+    "python-dotenv>=1.0,<2" \
     "dbt-core>=1.10,<1.11" \
     "dbt-clickhouse>=1.10,<1.11"
 

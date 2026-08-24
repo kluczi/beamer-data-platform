@@ -174,6 +174,7 @@ services:
             - airflow_data:/opt/airflow
             - ./orchestration/airflow/dags:/opt/airflow/dags
             - ./dbt/reports/.evidence:/opt/beamer/dbt/reports/.evidence
+            - ./.env:/opt/beamer/.env:ro
         depends_on:
             postgres:
                 condition: service_healthy

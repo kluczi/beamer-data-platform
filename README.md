@@ -115,6 +115,11 @@ SCRAPE_TARGETS=porsche:911,mercedes-benz:gle
 `REFERER_URL` is an HTTP request header; it does not select which vehicles are
 loaded.
 
+Airflow reads the mounted `.env` file at the start of every task. Changes to
+runtime values such as `SCRAPE_TARGETS` are therefore used by the next task run
+without restarting Airflow. Changes to Airflow startup settings, including the
+admin username or password, require the Airflow container to be recreated.
+
 ## Start the platform
 
 Install Apple Container from the
