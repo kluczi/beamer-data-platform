@@ -59,7 +59,6 @@ def build_variables(
                 "name": "make_model_generation",
                 "value": make_model_generation,
             },
-            {"name": "filter_enum_leasing_concession", "value": "1"},
         ],
         "includeCepik": False,
         "includeFiltersCounters": False,
