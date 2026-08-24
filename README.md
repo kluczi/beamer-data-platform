@@ -1,3 +1,5 @@
+![Beamer Analytics dashboard](preview.png)
+
 # Beamer Data Platform
 
 Beamer is a local data engineering platform that collects vehicle marketplace
