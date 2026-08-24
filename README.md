@@ -78,18 +78,22 @@ warehouse results.
 ## Repository layout
 
 ```text
-dbt/                              dbt project and Evidence reporting project
-orchestration/airflow/            Airflow image and DAG definitions
-services/scraper/                 Marketplace ingestion and warehouse loading
-services/dbt/                     Python entry point for dbt builds
-services/evidence/                Python entry point for Evidence refreshes
-scripts/container-up              Build and start the Apple Container stack
-scripts/container-down            Stop the stack while retaining volumes
-scripts/build-airflow             Build the complete local Airflow image
-scripts/scraper                   Run marketplace ingestion independently
-scripts/dbt                       Run dbt independently
-compose.apple.yml                 Optional container-compose definition
-docker-compose.yml                Compatibility definition, not primary runtime
+.
+├── dbt/
+│   ├── models/                  ClickHouse staging, marts, and tests
+│   ├── reports/                 Evidence dashboard and data sources
+│   ├── dbt_project.yml
+│   └── profiles.yml
+├── orchestration/
+│   └── airflow/                 Airflow image and pipeline DAG
+├── services/
+│   ├── scraper/                 Ingestion and warehouse loading
+│   ├── dbt/                     dbt task entry point
+│   ├── evidence/                Evidence refresh entry point
+│   └── discord/                 Discord alert service
+├── compose.apple.yml            Optional Apple compose definition
+├── docker-compose.yml           Compatibility compose definition
+└── .sqlfluff                    Shared SQL linting rules
 ```
 
 ## Configuration
