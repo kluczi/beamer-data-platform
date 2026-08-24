@@ -147,11 +147,11 @@ Local endpoints:
 
 | Service | Address |
 | --- | --- |
-| Airflow | [http://localhost:8080](http://localhost:8080) |
-| CH-UI | [http://localhost:3488](http://localhost:3488) |
+| Airflow | `localhost:8080` |
+| CH-UI | `localhost:3488` |
 | PostgreSQL | `localhost:5432` |
 | MinIO API | `http://localhost:9000` |
-| MinIO Console | [http://localhost:9001](http://localhost:9001) |
+| MinIO Console | `localhost:9001` |
 | ClickHouse HTTP | `http://localhost:8123` |
 | ClickHouse native | `localhost:9002` |
 
