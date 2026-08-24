@@ -1,5 +1,5 @@
 ---
-title: Marketplace pulse
+title: Beamer Analytics
 ---
 
 ```sql overview
@@ -66,8 +66,6 @@ from beamer_clickhouse.rpt__price_distribution_by_vehicle
 order by offer_count desc, median_price_amount desc
 limit 15
 ```
-
-# Beamer Data Platform
 
 <Grid cols=4 gapSize="lg">
     <BigValue data={current_metrics} value=current_offer_count title="Current inventory" fmt=num0 />
