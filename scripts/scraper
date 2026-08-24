@@ -11,20 +11,22 @@ MINIO_CONTAINER="beamer-minio.${DNS_DOMAIN}"
 CLICKHOUSE_CONTAINER="beamer-clickhouse.${DNS_DOMAIN}"
 SCRAPER_CONTAINER="beamer-scraper.${DNS_DOMAIN}"
 SCRAPER_IMAGE=beamer-scraper:local
-SCRAPE_TARGET=${1:-porsche:911}
+SCRAPE_TARGET=${1:-}
 SCRAPER_JOB=${2:-}
 
 if [ -n "$SCRAPER_JOB" ]; then
     SCRAPER_CONTAINER="beamer-${SCRAPER_JOB}-scraper.${DNS_DOMAIN}"
 fi
 
-case "$SCRAPE_TARGET" in
-    *:*) ;;
-    *)
-        echo "Scrape target must use make:model format, for example porsche:911" >&2
-        exit 1
-        ;;
-esac
+if [ -n "$SCRAPE_TARGET" ]; then
+    case "$SCRAPE_TARGET" in
+        *:*) ;;
+        *)
+            echo "Scrape target must use make:model format, for example porsche:911" >&2
+            exit 1
+            ;;
+    esac
+fi
 
 require() {
     command -v "$1" >/dev/null 2>&1 || {
@@ -64,7 +66,7 @@ container delete "$SCRAPER_CONTAINER" >/dev/null 2>&1 || true
 container build --tag "$SCRAPER_IMAGE" --file "$ROOT/services/scraper/Dockerfile" "$ROOT/services/scraper"
 container run --rm --init --name "$SCRAPER_CONTAINER" --network "$NETWORK" --dns-domain "$DNS_DOMAIN" \
     --env-file "$ENV_FILE" \
-    --env "SCRAPE_TARGETS=$SCRAPE_TARGET" \
+    ${SCRAPE_TARGET:+--env "SCRAPE_TARGETS=$SCRAPE_TARGET"} \
     --env "POSTGRES_HOST=$POSTGRES_IP" \
     --env "MINIO_ENDPOINT=${MINIO_IP}:9000" \
     --env "CLICKHOUSE_HOST=$CLICKHOUSE_IP" \
