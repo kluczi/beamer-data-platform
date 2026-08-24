@@ -89,6 +89,7 @@ warehouse results.
 │   ├── dbt/                    dbt task entry point
 │   ├── evidence/               Evidence refresh entry point
 │   └── discord/                Discord alert service
+├── scripts/                     Local build and run commands
 ├── compose.apple.yml            Optional Apple compose definition
 ├── docker-compose.yml           Compatibility compose definition
 └── .sqlfluff                    Shared SQL linting rules
