@@ -1,0 +1,12 @@
+.git/
+.env
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.venv/
+dbt/logs/
+dbt/target/
+dbt/reports/.evidence/
+dbt/reports/build/
+dbt/reports/node_modules/
+dbt/reports/sources/needful_things/
