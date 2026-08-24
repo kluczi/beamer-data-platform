@@ -78,11 +78,9 @@ def initialize_currency_rates_table(client) -> str:
     return f"{database}.raw_currency_rates"
 
 
-def load_currency_rates() -> list[CurrencyRate]:
+def load_currency_rates() -> None:
     with httpx.Client(timeout=10.0, follow_redirects=True) as http_client:
-        rates = [
-            fetch_currency_rate(http_client, currency) for currency in CURRENCIES
-        ]
+        rates = [fetch_currency_rate(http_client, currency) for currency in CURRENCIES]
 
     clickhouse_client = get_clickhouse_client()
     try:
@@ -113,18 +111,3 @@ def load_currency_rates() -> list[CurrencyRate]:
         )
     finally:
         clickhouse_client.close()
-
-    return rates
-
-
-def main() -> None:
-    rates = load_currency_rates()
-    for rate in rates:
-        print(
-            f"Loaded {rate.effective_date}: "
-            f"1 {rate.base_currency} = {rate.rate_to_pln} PLN ({rate.provider})"
-        )
-
-
-if __name__ == "__main__":
-    main()

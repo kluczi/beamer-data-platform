@@ -124,7 +124,11 @@ services:
     networks: [beamer]
 
   airflow:
-    image: docker.io/apache/airflow:3.3.1-python3.12
+    build:
+      context: .
+      dockerfile: orchestration/airflow/Dockerfile
+    image: beamer-airflow:local
+    mem_limit: 4g
     user: "0:0"
     env_file: .env
     command:
@@ -141,11 +145,23 @@ services:
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
       AIRFLOW__CORE__PARALLELISM: "4"
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "${AIRFLOW_ADMIN_USERNAME}:admin"
+      POSTGRES_HOST: postgres.beamer
+      MINIO_ENDPOINT: minio.beamer:9000
+      CLICKHOUSE_HOST: clickhouse.beamer
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
       - airflow_data:/opt/airflow
       - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./dbt/reports/.evidence:/opt/beamer/dbt/reports/.evidence
+      - ./.env:/opt/beamer/.env
+    depends_on:
+      postgres:
+        condition: service_started
+      create-bucket:
+        condition: service_started
+      clickhouse:
+        condition: service_started
     networks: [beamer]
 
 networks:

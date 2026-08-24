@@ -138,16 +138,23 @@ container run --detach --init --name "$SCRAPER_CONTAINER" --network "$NETWORK" -
     --volume "$ROOT/services/scraper/src:/app/src" \
     beamer-scraper:local python -m src.main
 
-container run --detach --init --user 0 --name "$AIRFLOW_CONTAINER" --network "$NETWORK" --dns-domain "$DNS_DOMAIN" \
+"$ROOT/scripts/build-airflow"
+mkdir -p "$ROOT/dbt/reports/.evidence"
+container run --detach --init --user 0 --memory 4g --name "$AIRFLOW_CONTAINER" --network "$NETWORK" --dns-domain "$DNS_DOMAIN" \
     --env-file "$ENV_FILE" \
     --publish 127.0.0.1:8080:8080 \
     --env AIRFLOW__CORE__LOAD_EXAMPLES=False \
     --env AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True \
     --env AIRFLOW__CORE__PARALLELISM=4 \
     --env "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS=${AIRFLOW_ADMIN_USERNAME}:admin" \
+    --env "POSTGRES_HOST=$POSTGRES_IP" \
+    --env "MINIO_ENDPOINT=${MINIO_IP}:9000" \
+    --env "CLICKHOUSE_HOST=$CLICKHOUSE_IP" \
     --volume beamer-airflow-data:/opt/airflow \
     --volume "$ROOT/orchestration/airflow/dags:/opt/airflow/dags" \
-    docker.io/apache/airflow:3.3.1-python3.12 bash -ec \
+    --volume "$ROOT/dbt/reports/.evidence:/opt/beamer/dbt/reports/.evidence" \
+    --volume "$ENV_FILE:/opt/beamer/.env" \
+    beamer-airflow:local bash -ec \
     'chown 50000:0 /opt/airflow;
      python -c '\''import json, os; json.dump({os.environ["AIRFLOW_ADMIN_USERNAME"]: os.environ["AIRFLOW_ADMIN_PASSWORD"]}, open("/opt/airflow/simple_auth_manager_passwords.json.generated", "w"))'\'';
      chown 50000:0 /opt/airflow/simple_auth_manager_passwords.json.generated;

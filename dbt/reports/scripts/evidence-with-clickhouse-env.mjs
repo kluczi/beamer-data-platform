@@ -56,6 +56,8 @@ loadEnvFile(path.join(reportRoot, '.env'));
 
 process.env.EVIDENCE_SOURCE__beamer_clickhouse__username ??= process.env.CLICKHOUSE_USER;
 process.env.EVIDENCE_SOURCE__beamer_clickhouse__password ??= process.env.CLICKHOUSE_PASSWORD;
+process.env.EVIDENCE_SOURCE__beamer_clickhouse__url ??=
+    `http://${process.env.CLICKHOUSE_HOST ?? '127.0.0.1'}:${process.env.CLICKHOUSE_PORT ?? '8123'}/${process.env.CLICKHOUSE_DB ?? 'beamer_warehouse'}`;
 
 const evidenceCli = path.join(reportRoot, 'node_modules', '@evidence-dev', 'evidence', 'cli.js');
 const child = spawn(process.execPath, [evidenceCli, ...process.argv.slice(2)], {

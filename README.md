@@ -1,201 +1,198 @@
 # Beamer Data Platform
 
-Beamer is a local data engineering platform for building and operating an
-end-to-end analytical pipeline. It combines durable lake storage, a fast
-analytical warehouse, tested SQL transformations, workflow orchestration, and
-a lightweight business intelligence layer.
+Beamer is a local data engineering platform that collects vehicle marketplace
+observations, preserves their history, transforms them in ClickHouse, and
+publishes analytics-ready datasets and dashboards.
 
-The repository demonstrates these data engineering patterns:
+## Runtime
 
-- append-only historical storage;
-- separation of catalog metadata and physical data files;
-- idempotent batch loading into a serving warehouse;
-- dimensional and fact modeling with dbt;
-- automated data quality tests;
-- user-defined orchestration with Airflow;
-- analytical dashboards backed by ClickHouse.
+The supported local runtime is Apple Container on Apple silicon with macOS 26
+or newer. Project scripts use Apple's `container` CLI directly. Docker Desktop
+is not required and is not used by the documented workflow.
+
+The repository retains `docker-compose.yml` as a compatibility definition, but
+the actively tested setup is `scripts/container-up` with Apple Containers.
 
 ## Architecture
 
 ```text
-                              Airflow
-                        workflow orchestration
-                                 |
-                                 v
-Source systems -> Python ingestion -> DuckLake -> ClickHouse raw
-                                        |               |
-                              +---------+               v
-                              |                 dbt transformations
-                              |                         |
-                    +---------+---------+               v
-                    |                   |         staging models
-                    v                   v               |
-              PostgreSQL             MinIO             v
-              catalog metadata       data files   dimensions + facts
-                                                        |
-                                                        v
-                                                   aggregations
-                                                        |
-                                                        v
-                                                      marts
-                                                        |
-                                                        v
-                                                    Evidence
+                         Airflow
+                            |
+          +-----------------+------------------+
+          |                 |                  |
+          v                 v                  v
+Marketplace ingestion   NBP exchange rates   dbt build
+          |                 |                  |
+          v                 v                  v
+       DuckLake        ClickHouse raw     ClickHouse marts
+       /      \                \               |
+PostgreSQL   MinIO              +--------------+
+ catalog     data files                        |
+                                                v
+                                         Evidence sources
 ```
 
-### Component responsibilities
+The storage and transformation layers have distinct responsibilities:
 
-| Component | Responsibility |
-| --- | --- |
-| PostgreSQL | Stores the DuckLake catalog, snapshots, and table metadata |
-| MinIO | Stores the physical DuckLake data files in S3-compatible object storage |
-| DuckLake | Provides versioned lake storage and an analytical table abstraction |
-| ClickHouse | Serves low-latency raw and modeled analytical data |
-| dbt | Builds staging, dimensional, fact, aggregate, and reporting models |
-| Airflow | Schedules and monitors user-defined data workflows |
-| Evidence | Publishes analytical pages and dashboards from ClickHouse |
-| CH-UI | Provides a local interface for inspecting ClickHouse |
+- PostgreSQL stores DuckLake catalog and snapshot metadata.
+- MinIO stores the DuckLake data files.
+- ClickHouse is the analytical warehouse for raw observations, staging models,
+  dimensions, facts, aggregates, and reporting marts.
+- dbt defines transformations and data-quality tests.
+- Evidence reads the reporting marts used by the dashboard.
+- Airflow schedules and monitors the end-to-end dependency graph.
 
-## Data flow
+Each ingestion run receives a UUID `scrape_run_id`. Observations are appended to
+DuckLake so historical price and mileage states remain available. Before a run
+is copied into ClickHouse, the loader checks the `warehouse_loads` table, making
+the warehouse load idempotent per run.
 
-1. A Python ingestion workload normalizes source records and assigns a unique
-   run identifier.
-2. Records are appended to DuckLake in batches. PostgreSQL maintains the
-   catalog while MinIO stores the underlying data files.
-3. Completed runs are loaded into ClickHouse. A warehouse load registry prevents
-   the same run from being loaded more than once.
-4. dbt transforms raw observations into reusable staging models, dimensions,
-   facts, aggregates, and reporting marts.
-5. dbt tests validate the configured source and model contracts.
-6. Evidence queries the reporting layer to render the analytics dashboard.
-7. Airflow can orchestrate these stages once project DAGs are added.
+## Airflow pipeline
 
-## dbt model graph
+The `beamer_pipeline` DAG contains four tasks:
 
 ```text
-raw_offers_observations
-└── stg_raw__offers_observations
-    ├── dim__offers
-    │   ├── agg__offers_by_brand
-    │   └── agg__offers_by_fuel_type
-    └── fct__offer_observations
-        └── agg__daily_offer_observations
+ingest_source_data ---------+
+                            +--> transform_warehouse --> refresh_evidence_sources
+update_currency_rates ------+
 ```
 
-The dimension stores the latest descriptive state of each entity. The fact
-table retains historical observations, while aggregate and reporting models
-support dashboard queries without repeating transformation logic in the BI
-layer.
+- `ingest_source_data` discovers configured vehicle listings and loads new
+  observations through DuckLake into ClickHouse.
+- `update_currency_rates` loads current NBP currency rates.
+- `transform_warehouse` runs `dbt build`, including configured data tests.
+- `refresh_evidence_sources` refreshes the Evidence source cache after dbt
+  completes successfully.
+
+Task code is imported from the Python service modules. The Airflow image also
+contains the Python ingestion dependencies, dbt Core, the ClickHouse adapter,
+Node.js, and the Evidence dependencies required by those tasks.
+
+Airflow and the host Evidence development server share
+`dbt/reports/.evidence`. A successful source-refresh task therefore updates the
+cache served at `localhost:3005`; reload the browser page to display the new
+warehouse results.
 
 ## Repository layout
 
 ```text
-services/                 Data-producing and operational services
-dbt/models/               ClickHouse sources, transformations, marts, and tests
-dbt/reports/              Evidence reporting project
-orchestration/airflow/    Airflow configuration and DAG directory
-scripts/                  Local operational commands
-compose.apple.yml         Compose definition for Apple Container
-docker-compose.yml        Compose definition for Docker
+dbt/                              dbt project and Evidence reporting project
+orchestration/airflow/            Airflow image and DAG definitions
+services/scraper/                 Marketplace ingestion and warehouse loading
+services/dbt/                     Python entry point for dbt builds
+services/evidence/                Python entry point for Evidence refreshes
+scripts/container-up              Build and start the Apple Container stack
+scripts/container-down            Stop the stack while retaining volumes
+scripts/build-airflow             Build the complete local Airflow image
+scripts/scraper                   Run marketplace ingestion independently
+scripts/dbt                       Run dbt independently
+compose.apple.yml                 Optional container-compose definition
+docker-compose.yml                Compatibility definition, not primary runtime
 ```
 
 ## Configuration
 
-Create a `.env` file in the repository root with the infrastructure
-credentials required by the local services:
+Create `.env` in the repository root. It is intentionally ignored by Git
+because it contains credentials and access tokens.
 
 | Area | Variables |
 | --- | --- |
 | PostgreSQL | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` |
 | MinIO | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET` |
 | ClickHouse | `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, optionally `CLICKHOUSE_DB` |
+| Marketplace | `GRAPHQL_URL`, `REFERER_URL`, `SITECODE`, `SCRAPE_TARGETS` |
+| Access protection | optionally `DATADOME_CLIENT_ID`, `DATADOME_COOKIE` |
+| Alerts | `DISCORD_WEBHOOK_URL` |
 | Airflow | `AIRFLOW_ADMIN_USERNAME`, `AIRFLOW_ADMIN_PASSWORD` |
-| Alerts | optionally `DISCORD_WEBHOOK_URL` |
 
-Do not commit `.env`; it contains local credentials and access tokens.
+`SCRAPE_TARGETS` controls the vehicle filters. Multiple targets use a
+comma-separated `make:model` format:
 
-## Run locally with Apple Container
+```env
+SCRAPE_TARGETS=porsche:911,mercedes-benz:gle
+```
 
-The primary development workflow uses Apple's `container` CLI on an
-Apple-silicon Mac running macOS 26 or newer.
+`REFERER_URL` is an HTTP request header; it does not select which vehicles are
+loaded.
 
-1. Install Apple Container from the
-   [official releases](https://github.com/apple/container/releases).
-2. Add the required values to `.env`.
-3. Start the platform:
+Airflow reads the mounted `.env` file at the start of every task. Changes to
+runtime values such as `SCRAPE_TARGETS` are therefore used by the next task run
+without restarting Airflow. Changes to Airflow startup settings, including the
+admin username or password, require the Airflow container to be recreated.
 
-   ```sh
-   ./scripts/container-up
-   ```
+## Start the platform
 
-The core services bind only to localhost:
+Install Apple Container from the
+[official releases](https://github.com/apple/container/releases), populate
+`.env`, and run:
+
+```sh
+./scripts/container-up
+```
+
+This builds the project images and starts PostgreSQL, MinIO, ClickHouse, CH-UI,
+the ingestion runtime, and Airflow on the `beamer` Apple Container network.
+
+Local endpoints:
 
 | Service | Address |
 | --- | --- |
+| Airflow | [http://localhost:8080](http://localhost:8080) |
+| CH-UI | [http://localhost:3488](http://localhost:3488) |
 | PostgreSQL | `localhost:5432` |
 | MinIO API | `http://localhost:9000` |
-| MinIO Console | `http://localhost:9001` |
+| MinIO Console | [http://localhost:9001](http://localhost:9001) |
 | ClickHouse HTTP | `http://localhost:8123` |
 | ClickHouse native | `localhost:9002` |
-| CH-UI | `http://localhost:3488` |
-| Airflow | `http://localhost:8080` |
 
-### Run dbt
+Airflow credentials come from `AIRFLOW_ADMIN_USERNAME` and
+`AIRFLOW_ADMIN_PASSWORD` in `.env`.
 
-After raw data is available in ClickHouse, validate the connection and build
-the transformation graph:
+## Independent development commands
+
+Run ingestion with every target configured in `.env`:
+
+```sh
+./scripts/scraper
+```
+
+Run a single configured target through the same ingestion code:
+
+```sh
+./scripts/scraper porsche:911 porsche-911
+./scripts/scraper mercedes-benz:gle mercedes-gle
+```
+
+Build and test dbt models:
 
 ```sh
 ./scripts/dbt debug
 ./scripts/dbt build
 ```
 
-`dbt build` materializes the selected models and runs their configured tests.
-Run only the tests with:
+Refresh and serve Evidence during dashboard development:
 
 ```sh
-./scripts/dbt test
+npm --prefix dbt/reports run sources:strict
+npm --prefix dbt/reports run dev -- --host 127.0.0.1 --port 3005
 ```
 
-### Use Airflow
+Open [http://localhost:3005](http://localhost:3005) after the development
+server starts.
 
-Airflow runs in local standalone mode. Add your DAG files to
-`orchestration/airflow/dags`; the directory is mounted directly at
-`/opt/airflow/dags` and requires no image rebuild.
-
-Open [http://localhost:8080](http://localhost:8080) and sign in with the
-`AIRFLOW_ADMIN_USERNAME` and `AIRFLOW_ADMIN_PASSWORD` values from `.env`.
-
-Built-in example DAGs are disabled, newly discovered DAGs begin paused, and
-local task parallelism is limited to four. The standalone runtime is intended
-only for local development.
-
-### Run Evidence
-
-Install the reporting dependencies, refresh the ClickHouse sources, and start
-the development server:
-
-```sh
-cd dbt
-npm --prefix ./reports install
-npm --prefix ./reports run sources
-npm --prefix ./reports run dev -- --host 127.0.0.1 --port 3005
-```
-
-Open [http://127.0.0.1:3005](http://127.0.0.1:3005).
-
-### Stop the platform
+## Stop the platform
 
 ```sh
 ./scripts/container-down
 ```
 
-The command removes the project containers and network while retaining data in
-the PostgreSQL, MinIO, ClickHouse, CH-UI, and Airflow named volumes.
+Project containers and the network are removed. PostgreSQL, MinIO, ClickHouse,
+CH-UI, and Airflow data remain in Apple Container named volumes.
 
-## Compose alternatives
+## Optional container-compose workflow
 
-With `container-compose`, use the Apple-specific Compose definition:
+If `container-compose` is installed, the Apple-specific compose definition can
+start the same services:
 
 ```sh
 sudo container system dns create beamer
@@ -203,9 +200,6 @@ container-compose --file compose.apple.yml up --build --detach
 container-compose --file compose.apple.yml down
 ```
 
-The DNS domain only needs to be registered once. Services use generated names
-such as `postgres.beamer`, `minio.beamer`, and `clickhouse.beamer` for local
-inter-container communication.
-
-For a conventional Docker engine, `docker-compose.yml` provides the equivalent
-development services and persistent volumes.
+The direct scripts remain the supported workflow because they handle Apple
+Container names, networking, image builds, readiness checks, and persistent
+volumes explicitly.
