@@ -1,10 +1,10 @@
-![Beamer Analytics dashboard](preview.png)
-
 # Beamer Data Platform
 
 Beamer is a local data engineering platform that collects vehicle marketplace
 observations, preserves their history, transforms them in ClickHouse, and
 publishes analytics-ready datasets and dashboards.
+
+![Beamer Analytics dashboard](preview.png)
 
 ## Runtime
 
